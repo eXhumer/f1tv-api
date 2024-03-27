@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eXhumer/f1tv.git"
+    "url": "git+https://github.com/eXhumer/f1tv-api.git"
   },
   "scripts": {
     "clean": "rimraf dist",
