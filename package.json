@@ -1,0 +1,40 @@
+{
+  "name": "@exhumer/f1tv-api",
+  "version": "0.0.1",
+  "description": "Unofficial F1TV API client for JavaScript/TypeScript",
+  "main": "dist/library.js",
+  "types": "dist/library.d.ts",
+  "author": {
+    "name": "eXhumer",
+    "email": "exhumer1@protonmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eXhumer/f1tv.git"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "npm run clean && rollup -c"
+  },
+  "license": "AGPL-3.0-only",
+  "files": [
+    "dist/*",
+    "src/*"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.7",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.6",
+    "rimraf": "^5.0.5",
+    "rollup": "^4.13.0",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.3"
+  },
+  "dependencies": {
+    "jwt-decode": "^4.0.0"
+  }
+}
