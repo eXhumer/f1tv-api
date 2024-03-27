@@ -1,6 +1,6 @@
 {
   "name": "@exhumer/f1tv-api",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Unofficial F1TV API client for JavaScript/TypeScript",
   "main": "dist/library.js",
   "types": "dist/library.d.ts",
