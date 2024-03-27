@@ -17,4 +17,4 @@ To install this package from Git:
 
 ## License
 
-This package is licensed under the AGPL-3.0-only License. See the [LICENSE](LICENSE) file for more information.
+This package is licensed under the AGPL-3.0-only License. See the [LICENSE](LICENSE.md) file for more information.
