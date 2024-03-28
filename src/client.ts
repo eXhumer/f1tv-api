@@ -65,16 +65,14 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     this.emit("ascendonUpdated", ascendon);
     
     this.refreshLocation()
-      .then(location => {
-        this.location = location.resultObj;
-        this.emit("locationUpdated", this.location);
+      .then(() => {
+        console.log("Location updated");
       });
 
     if (ascendon)
       this.refreshEntitlement()
-        .then(entitlement => {
-          this.entitlement = entitlement.resultObj.entitlementToken;
-          this.emit("entitlementUpdated", this.entitlement);
+        .then(() => {
+          console.log("Entitlement updated");
         });
   }
 
@@ -167,10 +165,14 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (!res.ok)
       throw new Error(`Failed to get entitlement: ${res.statusText} ${JSON.stringify(await res.json())}`);
   
-    return await res.json() as APIResult<EntitlementResult>;
+    const { resultObj } = await res.json() as APIResult<EntitlementResult>;
+
+    this.entitlement = resultObj.entitlementToken;
+
+    this.emit("entitlementUpdated", this.entitlement);
   };
 
-  private refreshLocation = async () => {
+  public refreshLocation = async () => {
     let locationUrl = [
       F1TVClient.BASE_URL,
       "1.0",
@@ -188,7 +190,9 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (!res.ok)
       throw new Error(`Failed to get location: ${res.statusText} ${JSON.stringify(await res.json())}`);
   
-    return await res.json() as APIResult<LocationResult>;
+    const { resultObj } = await res.json() as APIResult<LocationResult>;
+
+    this.emit("locationUpdated", resultObj)
   }
 
   public loginStatus = () => {
@@ -207,9 +211,8 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
       if (ascendon) {
         this.refreshEntitlement()
-          .then(entitlement => {
-            this.entitlement = entitlement.resultObj.entitlementToken;
-            this.emit("entitlementUpdated", this.entitlement);
+          .then(() => {
+            console.log("Entitlement updated");
           });
       } else {
         this.emit("entitlementUpdated", this.entitlement);
