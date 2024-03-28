@@ -16,15 +16,34 @@
 */
 
 import { jwtDecode, InvalidTokenError } from "jwt-decode";
-import { APIResult, DecodedAscendonToken, LocationResult } from "./type";
+import {
+  APIResult,
+  ContentPlayResult,
+  ContentVideoResult,
+  DecodedAscendonToken,
+  EntitlementResult,
+  Language,
+  LocationResult,
+  Platform,
+} from "./type";
+import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 
-export class F1TVClient {
+type F1TVClientEvents = {
+  entitlementUpdated: () => void;
+  locationUpdated: () => void;
+};
+
+export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   static BASE_URL = "https://f1tv.formula1.com";
   private ascendon?: string;
   readonly language: string;
   readonly platform: string;
+  private entitlement?: string;
+  private location?: LocationResult;
 
-  constructor(ascendon?: string, language: string = "ENG", platform: string = "WEB_DASH") {
+  constructor(ascendon?: string, language: Language = Language.ENGLISH, platform: Platform = Platform.WEB_DASH) {
+    super();
+
     if (ascendon)
       try {
         this.ascendon = ascendon;
@@ -39,7 +58,84 @@ export class F1TVClient {
 
     this.language = language;
     this.platform = platform;
+
+    this.refreshLocation()
+      .then(location => {
+        this.location = location.resultObj;
+        this.emit("locationUpdated");
+      });
+
+    if (ascendon)
+      this.refreshEntitlement()
+        .then(entitlement => {
+          this.entitlement = entitlement.resultObj.entitlementToken;
+          this.emit("entitlementUpdated");
+        });
   }
+
+  public contentPlay = async (contentId: number, channelId?: number) => {
+    if (!this.ascendon || !this.entitlement)
+      throw new Error("ascendon token or entitlement token is not set, unable to play content");
+  
+    let contentPlayUrl = [
+      F1TVClient.BASE_URL,
+      "2.0",
+      this.loginStatus(),
+      this.language,
+      this.platform,
+      "ALL/CONTENT/PLAY",
+    ].join("/");
+
+    const params: {
+      contentId: string;
+      channelId?: string;
+    } = { contentId: contentId.toString() };
+    if (channelId)
+      params.channelId = channelId.toString();
+
+    contentPlayUrl += "?" + new URLSearchParams(params).toString();
+
+    const res = await fetch(contentPlayUrl, { headers: { ascendontoken: this.ascendon, entitlementtoken: this.entitlement } });
+
+    if (!res.ok)
+      throw new Error(`Failed to play content: ${res.statusText} ${JSON.stringify(await res.json())}`);
+
+    return await res.json() as APIResult<ContentPlayResult>;
+  };
+
+  public contentVideo = async (contentId: number) => {
+    if (!this.location || this.location.userLocation.length === 0)
+      throw new Error("location is not set");
+
+    if (!this.entitlement)
+      console.warn("entitlement token is not set");
+
+    const userLocation = this.location.userLocation[0];
+
+    let contentVideoUrl = [
+      F1TVClient.BASE_URL,
+      "4.0",
+      this.loginStatus(),
+      this.language,
+      this.platform,
+      "ALL/CONTENT/VIDEO",
+      contentId.toString(),
+      userLocation.entitlement,
+      userLocation.groupId.toString(),
+    ].join("/");
+
+    let headers: { entitlementtoken?: string } = {};
+
+    if (this.entitlement)
+      headers.entitlementtoken = this.entitlement;
+      
+    const res = await fetch(contentVideoUrl, { headers });
+
+    if (!res.ok)
+      throw new Error(`Failed to get video content: ${res.statusText} ${JSON.stringify(await res.json())}`);
+
+    return await res.json() as APIResult<ContentVideoResult>;
+  };
 
   public decodedAscendon = () => {
     if (!this.ascendon)
@@ -48,7 +144,28 @@ export class F1TVClient {
     return jwtDecode<DecodedAscendonToken>(this.ascendon);
   }
 
-  public location = async () => {
+  public refreshEntitlement = async () => {
+    if (!this.ascendon)
+      throw new Error("ascendon token is not set, unable to retrieve entitlement");
+
+    let entitlementUrl = [
+      F1TVClient.BASE_URL,
+      "2.0",
+      this.loginStatus(),
+      this.language,
+      this.platform,
+      "ALL/USER/ENTITLEMENT",
+    ].join("/");
+
+    const res = await fetch(entitlementUrl, { headers: { ascendontoken: this.ascendon } });
+
+    if (!res.ok)
+      throw new Error(`Failed to get entitlement: ${res.statusText} ${JSON.stringify(await res.json())}`);
+  
+    return await res.json() as APIResult<EntitlementResult>;
+  };
+
+  private refreshLocation = async () => {
     let locationUrl = [
       F1TVClient.BASE_URL,
       "1.0",
@@ -64,7 +181,7 @@ export class F1TVClient {
     const res = await fetch(locationUrl);
 
     if (!res.ok)
-      throw new Error(`Failed to get location: ${res.statusText}`);
+      throw new Error(`Failed to get location: ${res.statusText} ${JSON.stringify(await res.json())}`);
   
     return await res.json() as APIResult<LocationResult>;
   }
@@ -77,6 +194,10 @@ export class F1TVClient {
     try {
       this.ascendon = ascendon;
       this.decodedAscendon();
+      this.refreshEntitlement()
+        .then(() => {
+          this.emit("entitlementUpdated");
+        });
     } catch (e) {
       if (e instanceof InvalidTokenError)
         throw new Error("Invalid Ascendon token");

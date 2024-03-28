@@ -15,12 +15,13 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { F1TVClient } from "./client";
-import { APIResult, DecodedAscendonToken, LocationResult } from "./type";
-
+export { F1TVClient } from "./client";
 export {
   APIResult,
+  ContentPlayResult,
+  ContentVideoResult,
   DecodedAscendonToken,
-  F1TVClient,
+  Language,
   LocationResult,
-};
+  Platform,
+} from "./type";
