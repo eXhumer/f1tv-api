@@ -29,8 +29,9 @@ import {
 import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 
 type F1TVClientEvents = {
-  entitlementUpdated: () => void;
-  locationUpdated: () => void;
+  ascendonUpdated: (ascendon?: string) => void;
+  entitlementUpdated: (entitlement?: string) => void;
+  locationUpdated: (location: LocationResult) => void;
 };
 
 export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
@@ -44,9 +45,10 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   constructor(ascendon?: string, language: Language = Language.ENGLISH, platform: Platform = Platform.WEB_DASH) {
     super();
 
-    if (ascendon)
+    this.ascendon = ascendon;
+
+    if (ascendon) {
       try {
-        this.ascendon = ascendon;
         this.decodedAscendon();
       } catch (e) {
         if (e instanceof InvalidTokenError)
@@ -55,21 +57,24 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
         else
           throw e;
       }
+    }
 
     this.language = language;
     this.platform = platform;
 
+    this.emit("ascendonUpdated", ascendon);
+    
     this.refreshLocation()
       .then(location => {
         this.location = location.resultObj;
-        this.emit("locationUpdated");
+        this.emit("locationUpdated", this.location);
       });
 
     if (ascendon)
       this.refreshEntitlement()
         .then(entitlement => {
           this.entitlement = entitlement.resultObj.entitlementToken;
-          this.emit("entitlementUpdated");
+          this.emit("entitlementUpdated", this.entitlement);
         });
   }
 
@@ -190,14 +195,26 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     return this.ascendon === undefined ? "A" : "R";
   }
 
-  public setAscendon = (ascendon: string) => {
+  public setAscendon = (ascendon?: string) => {
     try {
       this.ascendon = ascendon;
-      this.decodedAscendon();
-      this.refreshEntitlement()
-        .then(() => {
-          this.emit("entitlementUpdated");
-        });
+      this.entitlement = undefined;
+      
+      if (ascendon)
+        this.decodedAscendon();
+
+      this.emit("ascendonUpdated", ascendon);
+
+      if (ascendon) {
+        this.refreshEntitlement()
+          .then(entitlement => {
+            this.entitlement = entitlement.resultObj.entitlementToken;
+            this.emit("entitlementUpdated", this.entitlement);
+          });
+      } else {
+        this.emit("entitlementUpdated", this.entitlement);
+      }
+
     } catch (e) {
       if (e instanceof InvalidTokenError)
         throw new Error("Invalid Ascendon token");
