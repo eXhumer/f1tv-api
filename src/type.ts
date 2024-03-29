@@ -275,3 +275,15 @@ export enum Platform {
   WEB_DASH = "WEB_DASH",
   WEB_HLS = "WEB_HLS",
 };
+
+export type SearchVodParams = {
+  filter_genres?: string;
+  filter_MeetingKey?: string;
+  filter_objectSubtype?: string;
+  filter_orderByFom?: string;
+  filter_season?: string;
+  filter_year?: string;
+  maxResults?: string;
+  orderBy?: string;
+  sortOrder?: "asc" | "desc";
+};

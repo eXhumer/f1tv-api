@@ -25,6 +25,7 @@ import {
   Language,
   LocationResult,
   Platform,
+  SearchVodParams,
 } from "./type";
 import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 
@@ -36,6 +37,7 @@ type F1TVClientEvents = {
 
 export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   static BASE_URL = "https://f1tv.formula1.com";
+  static IMAGE_RESIZER_URL = "https://f1tv.formula1.com/image-resizer/image";
   private ascendon?: string;
   readonly language: string;
   readonly platform: string;
@@ -198,6 +200,53 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   public loginStatus = () => {
     return this.ascendon === undefined ? "A" : "R";
   }
+
+  public picture = async (slug: string, width: number, height: number, q?: "HI", o?: "L", fallback?: "true") => {
+    let pictureUrl = `${F1TVClient.IMAGE_RESIZER_URL}/${slug}`;
+
+    const pictureParams = new URLSearchParams({ width: width.toString(), height: height.toString() });
+
+    if (q)
+      pictureParams.append("q", q);
+
+    if (o)
+      pictureParams.append("o", o);
+
+    if (fallback)
+      pictureParams.append("fallback", fallback);
+
+    pictureUrl += "?" + pictureParams.toString();
+
+    return await fetch(pictureUrl);
+  };
+
+  public searchVod = async (params?: SearchVodParams) => {
+    if (!this.location || this.location.userLocation.length === 0)
+      throw new Error("location is not set");
+
+    const currentUserLocation = this.location.userLocation[0];
+
+    let searchVodUrl = [
+      F1TVClient.BASE_URL,
+      "2.0",
+      this.loginStatus(),
+      this.language,
+      this.platform,
+      "ALL/PAGE/SEARCH/VOD",
+      currentUserLocation.entitlement,
+      currentUserLocation.groupId.toString(),
+    ].join("/");
+
+    if (params)
+      searchVodUrl += "?" + new URLSearchParams(params).toString();
+
+    const res = await fetch(searchVodUrl);
+
+    if (!res.ok)
+      throw new Error(`Failed to search VOD: ${res.statusText} ${JSON.stringify(await res.json())}`);
+
+    return await res.json() as APIResult<unknown>;
+  };
 
   public setAscendon = (ascendon?: string) => {
     try {
