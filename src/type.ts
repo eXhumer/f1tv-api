@@ -260,7 +260,7 @@ export type LocationResult = {
     detectedCountryIsoCodeAlpha3: string;
     registeredCountryIsoCodeAlpha3: string;
     groupId: number;
-    entitlement: string;
+    entitlement: string; // ANONYMOUS | REG | PRO | (VIP?) | (OPS?)
   }[];
   countries: any[];
 };
@@ -286,4 +286,127 @@ export type SearchVodParams = {
   maxResults?: string;
   orderBy?: string;
   sortOrder?: "asc" | "desc";
+};
+
+export type SearchVodResult = {
+  total: number;
+  collectionName: string;
+  searchResultTotal: number;
+  containers: {
+    id: string;
+    layout: string;
+    actions: {
+      key: string;
+      uri: string;
+      targetType: string;
+      href: string;
+    }[];
+    containers: {
+      bundles: {
+        bundleId: number;
+        bundleType: string;
+        bundleSubtype: string;
+        isParent: boolean;
+        orderId: number;
+      }[];
+    };
+    platformVariants: {
+      subtitlesLanguages: any[];
+      audioLanguages: {
+        audioLanguageName: string;
+        audioId: string;
+        isPreferred: boolean;
+      }[];
+      technicalPackages: {
+        packageId: number;
+        packageName: string;
+        packageType: string;
+      }[];
+    }[];
+    properties: {
+      meeting_Number: number;
+      sessionEndDate: number;
+      series: string;
+      lastUpdatedDate: number;
+      lastIndexedDate: number;
+      season_Meeting_Ordinal: number;
+      meeting_Start_Date: number;
+      meeting_End_Date: number;
+      season: number;
+      session_index: number;
+      meetingSessionKey: number;
+    }[];
+    metadata: {
+      emfAttributes: {
+        VideoType: string;
+        MeetingKey: string;
+        MeetingSessionKey: string;
+        Meeting_Name: string;
+        Meeting_Number: string;
+        Circuit_Short_Name: string;
+        Meeting_Code: string;
+        MeetingCountryKey: string;
+        CircuitKey: string;
+        Meeting_Location: string;
+        Series: string;
+        OBC: boolean;
+        state: string;
+        TimetableKey: string;
+        SessionKey: string;
+        SessionPeriod: string;
+        Circuit_Official_Name: string;
+        ActivityDescription: string;
+        SeriesMeetingSessionIdentifier: string;
+        sessionEndTime: string;
+        Meeting_Start_Date: string;
+        Meeting_End_Date: string;
+        Track_Length: string;
+        Scheduled_Lap_Count: string;
+        Scheduled_Distance: string;
+        Circuit_Location: string;
+        Meeting_Sponsor: string;
+        IsTestEvent: string;
+        Season_Meeting_Ordinal: number;
+        Championship_Meeting_Ordinal: string;
+        session_index: number;
+        Meeting_Official_Name: string;
+        Meeting_Display_Date: string;
+        PageID: number | null;
+        sessionEndDate: number;
+        sessionStartDate: number;
+        Meeting_Country_Name: string;
+        Global_Title: string;
+        Global_Meeting_Country_Name: string;
+        Global_Meeting_Name: string;
+        Diplay_In_Schedule: boolean;
+        ContentCategory: string;
+        HeroMainTitleOverride: string;
+      };
+      longDescription: string;
+      shortDescription: string;
+      year: string;
+      contractStartDate: number;
+      contractEndDate: number;
+      externalId: string;
+      availableAlso: Platform[];
+      title: string;
+      titleBrief: string;
+      objectType: string;
+      duration: number;
+      genres: string[];
+      contentSubtype: string;
+      pcLevel: number;
+      contentId: number;
+      starRating: number;
+      pictureUrl: string;
+      contentType: string;
+      language: string;
+      season: number;
+      uiSeries: string;
+    };
+    uiMetadata: {
+      mainTitle: string;
+      subTitle: string;
+    };
+  }[];
 };

@@ -26,6 +26,7 @@ import {
   LocationResult,
   Platform,
   SearchVodParams,
+  SearchVodResult,
 } from "./type";
 import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 
@@ -217,7 +218,12 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
     pictureUrl += "?" + pictureParams.toString();
 
-    return await fetch(pictureUrl);
+    const res = await fetch(pictureUrl);
+
+    if (!res.ok)
+      throw new Error(`Failed to get picture: ${res.statusText} ${JSON.stringify(await res.json())}`);
+
+    return await res.blob();
   };
 
   public searchVod = async (params?: SearchVodParams) => {
@@ -245,7 +251,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (!res.ok)
       throw new Error(`Failed to search VOD: ${res.statusText} ${JSON.stringify(await res.json())}`);
 
-    return await res.json() as APIResult<unknown>;
+    return await res.json() as APIResult<SearchVodResult>;
   };
 
   public setAscendon = (ascendon?: string) => {
