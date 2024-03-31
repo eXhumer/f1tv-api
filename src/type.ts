@@ -26,7 +26,9 @@ export type APIResult<T> = {
 export type ContentPlayResult = {
   entitlementToken: string;
   url: string;
-  streamType: string;
+  streamType: "DASHWV" | "HLS";
+  drmType?: "DASHWV";
+  laUrl?: string;
   channelId: number;
   settings: {
     upnext: {
