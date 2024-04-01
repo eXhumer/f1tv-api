@@ -39,11 +39,11 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   static IMAGE_RESIZER_URL = "https://f1tv.formula1.com/image-resizer/image";
   readonly language: string;
   readonly platform: string;
-  private _ascendon?: string;
-  private _entitlement?: string;
-  private _location?: LocationResult;
+  private _ascendon: string | null = null;
+  private _entitlement: string | null = null;
+  private _location: LocationResult | null = null;
 
-  constructor(ascendon?: string, language: Language = Language.ENGLISH, platform: Platform = Platform.WEB_DASH) {
+  constructor(ascendon: string | null = null, language: Language = Language.ENGLISH, platform: Platform = Platform.WEB_DASH) {
     super();
 
     this.ascendon = ascendon;
@@ -57,10 +57,10 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     return this._ascendon;
   }
 
-  public set ascendon (ascendon: string | undefined) {
+  public set ascendon (ascendon: string | null) {
     try {
       this._ascendon = ascendon;
-      this._entitlement = undefined;
+      this._entitlement = null;
       
       if (ascendon) {
         this.decodedAscendon;
@@ -155,7 +155,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   };
 
   public loginStatus = () => {
-    return this._ascendon === undefined ? "A" : "R";
+    return this._ascendon === null ? "A" : "R";
   }
 
   public picture = async (slug: string, width: number, height: number, q?: "HI", o?: "L", fallback?: "true") => {
@@ -263,7 +263,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (this._location)
       return;
 
-    return new Promise<void>((resolve) => {
+    return await new Promise<void>((resolve) => {
       this.once("locationReady", resolve);
     });
   };
