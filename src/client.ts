@@ -211,6 +211,8 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     const { resultObj } = await res.json() as APIResult<EntitlementResult>;
 
     this._entitlement = resultObj.entitlementToken;
+
+    await this.refreshLocation();
   };
 
   public refreshLocation = async () => {
