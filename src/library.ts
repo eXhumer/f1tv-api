@@ -19,9 +19,13 @@ export { F1TVClient } from "./client";
 export {
   APIResult,
   ContentPlayResult,
+  ContentVideoContainer,
   ContentVideoResult,
   DecodedAscendonToken,
+  EntitlementResult,
   Language,
   LocationResult,
   Platform,
+  SearchVodParams,
+  SearchVodResult,
 } from "./type";
