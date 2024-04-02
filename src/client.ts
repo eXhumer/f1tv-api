@@ -151,7 +151,15 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (!res.ok)
       throw new Error(`Failed to get video content: ${res.statusText} ${JSON.stringify(await res.json())}`);
 
-    return await res.json() as APIResult<ContentVideoResult>;
+    const { resultObj } = await res.json() as APIResult<ContentVideoResult>;
+
+    if (resultObj.containers.length === 0)
+      throw new Error("No containers found");
+
+    else if (resultObj.containers.length > 1)
+      console.warn("Multiple containers found, returning the first one");
+
+    return resultObj.containers[0];
   };
 
   public loginStatus = () => {

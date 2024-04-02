@@ -37,6 +37,186 @@ export type ContentPlayResult = {
   };
 };
 
+export type ContentVideoContainer = {
+  metadata: {
+    longDescription: string;
+    country: string;
+    year: string;
+    emfAttributes: {
+      sessionEndTime: string;
+      video: string;
+      multipartEventIndex: string;
+      session_index: string;
+      captions: string;
+      MeetingSessionKey: string;
+      multipartEvent: string;
+      multipartEventNextHouseId: string;
+      sessionStartDate: string;
+      VideoType: string;
+      OBC: boolean;
+      multipartEventMainMSK: string;
+      MeetingCountryKey: string;
+      Meeting_Country_Name: string;
+      multipartEventTotal: string;
+      Diplay_In_Schedule: string;
+      Global_Title: string;
+      state: string;
+      Circuit_Short_Name: string;
+      Meeting_Name: string;
+      Meeting_Number: string;
+      multipartEventMainHouseId: string;
+      Global_Meeting_Name: string;
+      CircuitKey: string;
+      Global_Meeting_Country_Name: string;
+      MeetingKey: string;
+      Series: string;
+      Meeting_Location: string;
+      bug: string;
+      ContentCategory: string;
+      sessionEndDate: string;
+      Meeting_Code: string;
+    };
+    isADVAllowed: boolean;
+    contentId: number;
+    title: string;
+    episodeNumber: number;
+    objectType: string;
+    duration: number;
+    contentProvider: string;
+    isLatest: boolean;
+    genres: string[];
+    isOnAir: boolean;
+    isEncrypted: boolean;
+    objectSubtype: string;
+    metadataLanguage: string;
+    season: number;
+    pcLevelVod: string;
+    isParent: boolean
+    contractStartDate: number;
+    pictureUrl: string
+    availableLanguages: {
+      languageCode: string;
+      languageName: string;
+    }[];
+    contractEndDate: number;
+    externalId: string;
+    advTags: string;
+    shortDescription: string;
+    leavingSoon: boolean;
+    availableAlso: string[];
+    pcVodLabel: string;
+    isGeoBlocked: boolean;
+    filter: string;
+    titleBrief: string;
+    comingSoon: boolean;
+    isPopularEpisode: boolean;
+    primaryCategoryId: number;
+    uiDuration: string;
+    meetingKey: string;
+    entitlement: string;
+    locked: boolean;
+    videoType: string;
+    parentalAdvisory: string;
+    contentSubtype: string;
+    contentType: string;
+    additionalStreams?: {
+      racingNumber: number;
+      teamName: string;
+      type: string;
+      playbackUrl: string;
+      driverImg: string;
+      teamImg: string;
+      channelId: number;
+      title: string;
+      reportingName: string;
+      default: boolean;
+      identifier: string;
+    }[];
+  };
+  platformVariants: {
+    audioLanguages: {
+      audioLanguageName: string;
+      audioId: string;
+      isPreferred: boolean;
+    }[];
+    cpId: string;
+    videoType: string;
+    pictureUrl: string;
+    technicalPackages: {
+      packageId: number;
+      packageName: string;
+      packageType: string;
+    }[];
+    trailerUrl: string;
+    hasTrailer: boolean;
+  }[];
+  popularity: {
+    shortPeriod: number;
+    longPeriod: number;
+    allTime: number;
+  };
+  contentId: number;
+  containers: {
+    bundles: {
+      bundleSubtype: string;
+      isParent: boolean;
+      orderId: number;
+      bundleId: number;
+      bundleType: string;
+    }[];
+    categories: {
+      categoryPathIds: number[];
+      externalPathIds: string[];
+      endDate: number;
+      orderId: number;
+      isPrimary: boolean;
+      categoryName: string;
+      categoryId: number;
+      startDate: number;
+    }[];
+  }[];
+  suggest: {
+    input: string[];
+    payload: {
+      objectSubtype: string;
+      contentId: string;
+      title: string;
+      objectType: string;
+    };
+  };
+  platformName: string;
+  properties: {
+    sessionStartDate: number;
+    meeting_Start_Date: number;
+    lastUpdatedDate: number;
+    season_Meeting_Ordinal: number;
+    series: string;
+    sessionEndTime: number;
+    meeting_Number: number;
+    season: number;
+    lastIndexedDate: number;
+    meeting_End_Date: number;
+    session_index: number;
+    sessionEndDate: number;
+  }[];
+  id: number;
+  layout: string;
+  liveNow: {
+    enabled: {
+      AMAZONFIRE: boolean;
+      AMAZONFIRETV: boolean;
+      ANDROID: boolean;
+      ANDROIDTV: boolean;
+      IOS: boolean;
+      ROKU: boolean;
+      SAMSUNG: boolean;
+      TVOS: boolean;
+      WEB: boolean;
+    };
+    url: string;
+  };
+};
+
 export type ContentVideoResult = {
   personalisation: {
     url: string;
@@ -44,185 +224,7 @@ export type ContentVideoResult = {
     body: string;
   };
   total: number;
-  containers: {
-    metadata: {
-      longDescription: string;
-      country: string;
-      year: string;
-      emfAttributes: {
-        sessionEndTime: string;
-        video: string;
-        multipartEventIndex: string;
-        session_index: string;
-        captions: string;
-        MeetingSessionKey: string;
-        multipartEvent: string;
-        multipartEventNextHouseId: string;
-        sessionStartDate: string;
-        VideoType: string;
-        OBC: boolean;
-        multipartEventMainMSK: string;
-        MeetingCountryKey: string;
-        Meeting_Country_Name: string;
-        multipartEventTotal: string;
-        Diplay_In_Schedule: string;
-        Global_Title: string;
-        state: string;
-        Circuit_Short_Name: string;
-        Meeting_Name: string;
-        Meeting_Number: string;
-        multipartEventMainHouseId: string;
-        Global_Meeting_Name: string;
-        CircuitKey: string;
-        Global_Meeting_Country_Name: string;
-        MeetingKey: string;
-        Series: string;
-        Meeting_Location: string;
-        bug: string;
-        ContentCategory: string;
-        sessionEndDate: string;
-        Meeting_Code: string;
-      };
-      isADVAllowed: boolean;
-      contentId: number;
-      title: string;
-      episodeNumber: number;
-      objectType: string;
-      duration: number;
-      contentProvider: string;
-      isLatest: boolean;
-      genres: string[];
-      isOnAir: boolean;
-      isEncrypted: boolean;
-      objectSubtype: string;
-      metadataLanguage: string;
-      season: number;
-      pcLevelVod: string;
-      isParent: boolean
-      contractStartDate: number;
-      pictureUrl: string
-      availableLanguages: {
-        languageCode: string;
-        languageName: string;
-      }[];
-      contractEndDate: number;
-      externalId: string;
-      advTags: string;
-      shortDescription: string;
-      leavingSoon: boolean;
-      availableAlso: string[];
-      pcVodLabel: string;
-      isGeoBlocked: boolean;
-      filter: string;
-      titleBrief: string;
-      comingSoon: boolean;
-      isPopularEpisode: boolean;
-      primaryCategoryId: number;
-      uiDuration: string;
-      meetingKey: string;
-      entitlement: string;
-      locked: boolean;
-      videoType: string;
-      parentalAdvisory: string;
-      contentSubtype: string;
-      contentType: string;
-      additionalStreams?: {
-        racingNumber: number;
-        teamName: string;
-        type: string;
-        playbackUrl: string;
-        driverImg: string;
-        teamImg: string;
-        channelId: number;
-        title: string;
-        reportingName: string;
-        default: boolean;
-        identifier: string;
-      }[];
-    };
-    platformVariants: {
-      audioLanguages: {
-        audioLanguageName: string;
-        audioId: string;
-        isPreferred: boolean;
-      }[];
-      cpId: string;
-      videoType: string;
-      pictureUrl: string;
-      technicalPackages: {
-        packageId: number;
-        packageName: string;
-        packageType: string;
-      }[];
-      trailerUrl: string;
-      hasTrailer: boolean;
-    }[];
-    popularity: {
-      shortPeriod: number;
-      longPeriod: number;
-      allTime: number;
-    };
-    contentId: number;
-    containers: {
-      bundles: {
-        bundleSubtype: string;
-        isParent: boolean;
-        orderId: number;
-        bundleId: number;
-        bundleType: string;
-      }[];
-      categories: {
-        categoryPathIds: number[];
-        externalPathIds: string[];
-        endDate: number;
-        orderId: number;
-        isPrimary: boolean;
-        categoryName: string;
-        categoryId: number;
-        startDate: number;
-      }[];
-    }[];
-    suggest: {
-      input: string[];
-      payload: {
-        objectSubtype: string;
-        contentId: string;
-        title: string;
-        objectType: string;
-      };
-    };
-    platformName: string;
-    properties: {
-      sessionStartDate: number;
-      meeting_Start_Date: number;
-      lastUpdatedDate: number;
-      season_Meeting_Ordinal: number;
-      series: string;
-      sessionEndTime: number;
-      meeting_Number: number;
-      season: number;
-      lastIndexedDate: number;
-      meeting_End_Date: number;
-      session_index: number;
-      sessionEndDate: number;
-    }[];
-    id: number;
-    layout: string;
-    liveNow: {
-      enabled: {
-        AMAZONFIRE: boolean;
-        AMAZONFIRETV: boolean;
-        ANDROID: boolean;
-        ANDROIDTV: boolean;
-        IOS: boolean;
-        ROKU: boolean;
-        SAMSUNG: boolean;
-        TVOS: boolean;
-        WEB: boolean;
-      };
-      url: string;
-    };
-  }[];
+  containers: ContentVideoContainer[];
 };
 
 export type DecodedAscendonToken = {
