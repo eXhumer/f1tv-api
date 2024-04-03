@@ -49,8 +49,9 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     this.ascendon = ascendon;
     this.language = language;
     this.platform = platform;
-
-    this.refreshLocation();
+  
+    if (!ascendon)
+      this.refreshLocation();
   }
 
   public get ascendon() {
@@ -216,7 +217,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   };
 
   public refreshLocation = async () => {
-    let locationUrl = [
+    const locationUrl = [
       F1TVClient.BASE_URL,
       "1.0",
       this.loginStatus(),
@@ -225,10 +226,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       "ALL/USER/LOCATION",
     ].join("/");
 
-    if (this._ascendon)
-      locationUrl += "?" + new URLSearchParams({ homeCountry: this.decodedAscendon.ExternalAuthorizationsContextData }).toString()
-
-    const res = await fetch(locationUrl);
+    const res = await fetch(locationUrl, { headers: this._entitlement ? { entitlementtoken: this._entitlement } : undefined });
 
     if (!res.ok)
       throw new Error(`Failed to get location: ${res.statusText} ${JSON.stringify(await res.json())}`);
