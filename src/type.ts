@@ -29,6 +29,7 @@ export type ContentPlayResult = {
   streamType: "DASHWV" | "HLS";
   drmType?: "widevine";
   laURL?: string;
+  drmToken?: string;
   channelId: number;
   settings: {
     upnext: {
