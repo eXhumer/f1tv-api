@@ -27,7 +27,7 @@ export type ContentPlayResult = {
   entitlementToken: string;
   url: string;
   streamType: "DASHWV" | "HLS";
-  drmType?: "DASHWV";
+  drmType?: "widevine";
   laUrl?: string;
   channelId: number;
   settings: {
