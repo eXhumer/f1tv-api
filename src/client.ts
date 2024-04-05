@@ -23,6 +23,7 @@ import {
   DecodedAscendonToken,
   EntitlementResult,
   Language,
+  LiveNowResult,
   LocationResult,
   Platform,
   SearchVodParams,
@@ -161,6 +162,31 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       console.warn("Multiple containers found, returning the first one");
 
     return resultObj.containers[0];
+  };
+
+  public liveNow = async () => {
+    if (!this._location || this._location.userLocation.length === 0)
+      throw new Error("location is not set");
+
+    const userLocation = this._location.userLocation[0];
+
+    let liveNowUrl = [
+      F1TVClient.BASE_URL,
+      "1.0",
+      this.loginStatus(),
+      this.language,
+      this.platform,
+      "ALL/EVENTS/LIVENOW",
+      userLocation.entitlement,
+      userLocation.groupId.toString(),
+    ].join("/");
+
+    const res = await fetch(liveNowUrl);
+
+    if (!res.ok)
+      throw new Error(`Failed to get live now: ${res.statusText} ${JSON.stringify(await res.json())}`);
+
+    return await res.json() as APIResult<LiveNowResult>;
   };
 
   public loginStatus = () => {
