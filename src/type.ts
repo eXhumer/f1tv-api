@@ -23,6 +23,209 @@ export type APIResult<T> = {
   systemTime: number;
 };
 
+export type Config = {
+  apiConfig: {
+    proto: string;
+    domain: string;
+    prefix: string;
+    version: string;
+    channel: string;
+    playAPIVersion: string;
+    videoAPIVersion: string;
+  };
+  appIsoCode: string;
+  bitmovin: {
+    playbackOffsets: {
+      wif: {
+        obc: number;
+        other: number;
+      };
+      obc: {
+        wif: number;
+        other: number;
+      };
+      other: {
+        wif: number;
+        obc: number;
+      };
+    };
+    bitmovinKeys: {
+      player: string;
+      analytics: string;
+    };
+    chromecast: {
+      receiverApplicationId: string;
+      messageNamespace: string;
+      customPlayApiHeaders: {};
+    };
+    emptyManifestsManagement: boolean;
+    playProgressCapture: {
+      enabled: boolean;
+      interval: number;
+      minResumeSeconds: number;
+    };
+    buffer: {
+      video: {
+        forwardduration: number;
+        backwardduration: number;
+      };
+      audio: {
+        forwardduration: number;
+        backwardduration: number;
+      };
+    };
+    drm: {
+      certUrl: string;
+    };
+    watchLiveOverlay: boolean
+    httpRequestRetriesOverride: {
+      enabled: boolean;
+      config: {
+        reqLimit: number;
+        reqTimeout: number;
+        httpReqAttempts: number;
+      };
+    };
+    limitMaxBitrateByPlayerResolution: boolean;
+  };
+  newRelic: {
+    licenseKey: string;
+    applicationId: string;
+    accountId: string;
+  };
+  ENABLE_ASCENDON_PANIC_MODE: boolean;
+  env: string;
+  debugEnabled: boolean;
+  appLanguage: string;
+  betaPagePassCheckUrl: string;
+  authLinks: {
+    login: string;
+    subscribe: string;
+    manageAccount: string;
+    subscription: string;
+    verify: string;
+  };
+  drConfig: {
+    endpoint: string;
+    redirectUrl: string;
+    delay: number;
+  };
+  supportedLanguages: string[];
+  groupIdVip: number;
+  requestTimeout: number;
+  ga: {
+    gtmId: string;
+  };
+  firebaseConfig: {
+    apiKey: string;
+    authDomain: string;
+    databaseURL: string;
+    projectId: string;
+    storageBucket: string;
+    messagingSenderId: string;
+    appId: string;
+    measurementId: string;
+  };
+  showStats: boolean;
+  browsers: {
+    allow: Record<string, string>;
+    crawlers: string[];
+  };
+  imgCDNResize: string;
+  imgCDNFlags: string;
+  enableMonitoringHeaders: boolean;
+  pageCacheTimeoutInSeconds: number;
+  configCacheTimeoutInSeconds: number;
+  subPriorityMap: Record<string, string>;
+  robots: {
+    enabled: boolean;
+    allowRules: {
+      userAgent: string;
+      routes: string;
+    };
+    disallowRules: {
+      userAgent: string;
+      routes: string;
+    };
+  };
+  meta: {
+    ogtitle: string;
+    ogdescription: string;
+    ogsitename: string;
+    keywords: string;
+  };
+  cmp: {
+    enabled: boolean;
+    domain: string;
+    vendorIds: {
+      bitmovinId: number;
+      newRelicId: number;
+      firebaseId: number;
+    };
+    accountId: number;
+    privacyManagerModalId: number;
+    propertyId: number;
+    propertyHref: string;
+    baseEndpoint: string;
+  };
+  emailVerification: {
+    enabled: boolean;
+    fallbackTime: number;
+  };
+  hintOverlay: {
+    enabled: boolean;
+    fallbackTime: number;
+  };
+  search: {
+    enabled: boolean;
+    minLength: number;
+    maxLength: number;
+  };
+  liveNow: {
+    enabled: boolean;
+    bannerTimeoutSeconds: number;
+  };
+  UPNEXT: {
+    enabled: boolean;
+    apiVersion: string;
+    pathVariable: string;
+    inPlayerRailEnabled: boolean;
+    autoPlayEnabled: boolean;
+    autoPlaySeconds: number;
+    vodAutoPlaySeconds: number;
+    vodSecondsFromEnd: number
+    secondsFromCoverageStarted: number;
+  };
+  myList: {
+    enabled: boolean;
+  };
+  albTimeoutInSecs: number;
+  timeAfterLivePlaybackStartsToKickUserOutMs: number;
+  authentication: {
+    domain: string;
+    apiKey: string;
+    distributionChannel: string;
+    systemID: string;
+    deviceType: number;
+    url: {
+      rendezvousRegisterDevice: string;
+    };
+    imperva: {
+      enabled: boolean;
+      challengeUrl: string;
+    };
+  };
+  pinPairing: {
+    enabled: boolean;
+  };
+  locationDefaults: {
+    groupId: number;
+    entitlement: string;
+    userCountry: string;
+  };
+  version: string;
+};
+
 export type ContentPlayResult = {
   entitlementToken: string;
   url: string;

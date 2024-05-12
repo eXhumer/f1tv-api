@@ -18,6 +18,7 @@
 export { F1TVClient } from './client';
 export {
   APIResult,
+  Config,
   ContentPlayResult,
   ContentVideoContainer,
   ContentVideoResult,

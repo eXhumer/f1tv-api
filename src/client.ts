@@ -18,6 +18,7 @@
 import { jwtDecode, InvalidTokenError } from 'jwt-decode';
 import {
   APIResult,
+  Config,
   ContentPlayResult,
   ContentVideoResult,
   DecodedAscendonToken,
@@ -41,6 +42,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   readonly language: string;
   readonly platform: string;
   private _ascendon: string | null = null;
+  private _config: Config | null = null;
   private _entitlement: string | null = null;
   private _location: LocationResult | null = null;
 
@@ -53,6 +55,8 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   
     if (!ascendon)
       this.refreshLocation();
+
+    this.refreshConfig();
   }
 
   public get ascendon() {
@@ -75,6 +79,10 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       else
         throw e;
     }
+  }
+
+  public get config() {
+    return this._config;
   }
 
   public get decodedAscendon() {
@@ -215,6 +223,15 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       throw new Error(`Failed to get picture: ${res.statusText} ${JSON.stringify(await res.json())}`);
 
     return await res.blob();
+  };
+
+  private refreshConfig = async () => {
+    const res = await fetch(`${F1TVClient.BASE_URL}/config`);
+
+    if (!res.ok)
+      throw new Error(`Failed to get config: ${res.statusText} ${JSON.stringify(await res.json())}`);
+
+    this._config = await res.json() as Config;
   };
 
   public refreshEntitlement = async () => {
