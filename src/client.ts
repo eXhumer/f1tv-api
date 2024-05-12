@@ -15,7 +15,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { jwtDecode, InvalidTokenError } from "jwt-decode";
+import { jwtDecode, InvalidTokenError } from 'jwt-decode';
 import {
   APIResult,
   ContentPlayResult,
@@ -28,7 +28,7 @@ import {
   Platform,
   SearchVodParams,
   SearchVodResult,
-} from "./type";
+} from './type';
 import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 
 type F1TVClientEvents = {
@@ -36,8 +36,8 @@ type F1TVClientEvents = {
 };
 
 export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
-  static BASE_URL = "https://f1tv.formula1.com";
-  static IMAGE_RESIZER_URL = "https://f1tv.formula1.com/image-resizer/image";
+  static BASE_URL = 'https://f1tv.formula1.com';
+  static IMAGE_RESIZER_URL = 'https://f1tv.formula1.com/image-resizer/image';
   readonly language: string;
   readonly platform: string;
   private _ascendon: string | null = null;
@@ -70,7 +70,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       }
     } catch (e) {
       if (e instanceof InvalidTokenError)
-        throw new Error("Invalid Ascendon token");
+        throw new Error('Invalid Ascendon token');
 
       else
         throw e;
@@ -79,7 +79,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
   public get decodedAscendon() {
     if (!this._ascendon)
-      throw new Error("ascendon token is not set");
+      throw new Error('ascendon token is not set');
 
     return jwtDecode<DecodedAscendonToken>(this._ascendon);
   }
@@ -94,16 +94,16 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
   public contentPlay = async (contentId: number, channelId?: number) => {
     if (!this._ascendon || !this._entitlement)
-      throw new Error("ascendon token or entitlement token is not set, unable to play content");
+      throw new Error('ascendon token or entitlement token is not set, unable to play content');
   
     let contentPlayUrl = [
       F1TVClient.BASE_URL,
-      "2.0",
+      '2.0',
       this.loginStatus(),
       this.language,
       this.platform,
-      "ALL/CONTENT/PLAY",
-    ].join("/");
+      'ALL/CONTENT/PLAY',
+    ].join('/');
 
     const params: {
       contentId: string;
@@ -112,7 +112,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (channelId)
       params.channelId = channelId.toString();
 
-    contentPlayUrl += "?" + new URLSearchParams(params).toString();
+    contentPlayUrl += '?' + new URLSearchParams(params).toString();
 
     const res = await fetch(contentPlayUrl, { headers: { ascendontoken: this._ascendon, entitlementtoken: this._entitlement } });
 
@@ -124,24 +124,24 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
   public contentVideo = async (contentId: number) => {
     if (!this._location || this._location.userLocation.length === 0)
-      throw new Error("location is not set");
+      throw new Error('location is not set');
 
     if (!this._entitlement)
-      console.warn("entitlement token is not set");
+      console.warn('entitlement token is not set');
 
     const userLocation = this._location.userLocation[0];
 
     let contentVideoUrl = [
       F1TVClient.BASE_URL,
-      "4.0",
+      '4.0',
       this.loginStatus(),
       this.language,
       this.platform,
-      "ALL/CONTENT/VIDEO",
+      'ALL/CONTENT/VIDEO',
       contentId.toString(),
       userLocation.entitlement,
       userLocation.groupId.toString(),
-    ].join("/");
+    ].join('/');
 
     let headers: { entitlementtoken?: string } = {};
 
@@ -156,30 +156,30 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     const { resultObj } = await res.json() as APIResult<ContentVideoResult>;
 
     if (resultObj.containers.length === 0)
-      throw new Error("No containers found");
+      throw new Error('No containers found');
 
     else if (resultObj.containers.length > 1)
-      console.warn("Multiple containers found, returning the first one");
+      console.warn('Multiple containers found, returning the first one');
 
     return resultObj.containers[0];
   };
 
   public liveNow = async () => {
     if (!this._location || this._location.userLocation.length === 0)
-      throw new Error("location is not set");
+      throw new Error('location is not set');
 
     const userLocation = this._location.userLocation[0];
 
     let liveNowUrl = [
       F1TVClient.BASE_URL,
-      "1.0",
+      '1.0',
       this.loginStatus(),
       this.language,
       this.platform,
-      "ALL/EVENTS/LIVENOW",
+      'ALL/EVENTS/LIVENOW',
       userLocation.entitlement,
       userLocation.groupId.toString(),
-    ].join("/");
+    ].join('/');
 
     const res = await fetch(liveNowUrl);
 
@@ -190,24 +190,24 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   };
 
   public loginStatus = () => {
-    return this._ascendon === null ? "A" : "R";
+    return this._ascendon === null ? 'A' : 'R';
   }
 
-  public picture = async (slug: string, width: number, height: number, q?: "HI", o?: "L", fallback?: "true") => {
+  public picture = async (slug: string, width: number, height: number, q?: 'HI', o?: 'L', fallback?: 'true') => {
     let pictureUrl = `${F1TVClient.IMAGE_RESIZER_URL}/${slug}`;
 
     const pictureParams = new URLSearchParams({ width: width.toString(), height: height.toString() });
 
     if (q)
-      pictureParams.append("q", q);
+      pictureParams.append('q', q);
 
     if (o)
-      pictureParams.append("o", o);
+      pictureParams.append('o', o);
 
     if (fallback)
-      pictureParams.append("fallback", fallback);
+      pictureParams.append('fallback', fallback);
 
-    pictureUrl += "?" + pictureParams.toString();
+    pictureUrl += '?' + pictureParams.toString();
 
     const res = await fetch(pictureUrl);
 
@@ -219,16 +219,16 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
   public refreshEntitlement = async () => {
     if (!this.ascendon)
-      throw new Error("ascendon token is not set, unable to retrieve entitlement");
+      throw new Error('ascendon token is not set, unable to retrieve entitlement');
 
     let entitlementUrl = [
       F1TVClient.BASE_URL,
-      "2.0",
+      '2.0',
       this.loginStatus(),
       this.language,
       this.platform,
-      "ALL/USER/ENTITLEMENT",
-    ].join("/");
+      'ALL/USER/ENTITLEMENT',
+    ].join('/');
 
     const res = await fetch(entitlementUrl, { headers: { ascendontoken: this.ascendon } });
 
@@ -245,12 +245,12 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
   public refreshLocation = async () => {
     const locationUrl = [
       F1TVClient.BASE_URL,
-      "1.0",
+      '1.0',
       this.loginStatus(),
       this.language,
       this.platform,
-      "ALL/USER/LOCATION",
-    ].join("/");
+      'ALL/USER/LOCATION',
+    ].join('/');
 
     const res = await fetch(locationUrl, { headers: this._entitlement ? { entitlementtoken: this._entitlement } : undefined });
 
@@ -262,28 +262,28 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     this._location = resultObj;
 
     if (!oldLocation)
-      this.emit("locationReady");
+      this.emit('locationReady');
   }
 
   public searchVod = async (params?: SearchVodParams) => {
     if (!this._location || this._location.userLocation.length === 0)
-      throw new Error("location is not set");
+      throw new Error('location is not set');
 
     const currentUserLocation = this._location.userLocation[0];
 
     let searchVodUrl = [
       F1TVClient.BASE_URL,
-      "2.0",
+      '2.0',
       this.loginStatus(),
       this.language,
       this.platform,
-      "ALL/PAGE/SEARCH/VOD",
+      'ALL/PAGE/SEARCH/VOD',
       currentUserLocation.entitlement,
       currentUserLocation.groupId.toString(),
-    ].join("/");
+    ].join('/');
 
     if (params)
-      searchVodUrl += "?" + new URLSearchParams(params).toString();
+      searchVodUrl += '?' + new URLSearchParams(params).toString();
 
     const res = await fetch(searchVodUrl);
 
@@ -298,7 +298,7 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       return;
 
     return await new Promise<void>((resolve) => {
-      this.once("locationReady", resolve);
+      this.once('locationReady', resolve);
     });
   };
 }

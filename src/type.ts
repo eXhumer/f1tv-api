@@ -26,8 +26,8 @@ export type APIResult<T> = {
 export type ContentPlayResult = {
   entitlementToken: string;
   url: string;
-  streamType: "DASHWV" | "HLS";
-  drmType?: "widevine";
+  streamType: 'DASH' | 'DASHWV' | 'HLS';
+  drmType?: 'widevine';
   laURL?: string;
   drmToken?: string;
   channelId: number;
@@ -122,16 +122,20 @@ export type ContentVideoContainer = {
     contentType: string;
     additionalStreams?: {
       racingNumber: number;
+      driverFirstName?: string;
+      driverLastName?: string;
+      constructorName?: string;
       teamName: string;
-      type: string;
+      type: 'additional' | 'obc';
       playbackUrl: string;
       driverImg: string;
       teamImg: string;
+      hex?: string;
       channelId: number;
       title: string;
       reportingName: string;
       default: boolean;
-      identifier: string;
+      identifier: 'PRES' | 'WIF' | 'TRACKER' | 'DATA' | 'OBC';
     }[];
   };
   platformVariants: {
@@ -250,12 +254,12 @@ export type EntitlementResult = {
 };
 
 export enum Language {
-  ENGLISH = "ENG",
-  DUTCH = "NLD",
-  PORTUGUESE = "POR",
-  SPANISH = "SPA",
-  GERMAN = "DEU",
-  FRENCH = "FRA",
+  ENGLISH = 'ENG',
+  DUTCH = 'NLD',
+  PORTUGUESE = 'POR',
+  SPANISH = 'SPA',
+  GERMAN = 'DEU',
+  FRENCH = 'FRA',
 };
 
 export type LiveNowResult = {
@@ -410,14 +414,14 @@ export type LocationResult = {
 };
 
 export enum Platform {
-  BIG_SCREEN_DASH = "BIG_SCREEN_DASH",
-  BIG_SCREEN_HLS = "BIG_SCREEN_HLS",
-  MOBILE_DASH = "MOBILE_DASH",
-  MOBILE_HLS = "MOBILE_HLS",
-  TABLET_DASH = "TABLET_DASH",
-  TABLET_HLS = "TABLET_HLS",
-  WEB_DASH = "WEB_DASH",
-  WEB_HLS = "WEB_HLS",
+  BIG_SCREEN_DASH = 'BIG_SCREEN_DASH',
+  BIG_SCREEN_HLS = 'BIG_SCREEN_HLS',
+  MOBILE_DASH = 'MOBILE_DASH',
+  MOBILE_HLS = 'MOBILE_HLS',
+  TABLET_DASH = 'TABLET_DASH',
+  TABLET_HLS = 'TABLET_HLS',
+  WEB_DASH = 'WEB_DASH',
+  WEB_HLS = 'WEB_HLS',
 };
 
 export type SearchVodParams = {
@@ -429,7 +433,7 @@ export type SearchVodParams = {
   filter_year?: string;
   maxResults?: string;
   orderBy?: string;
-  sortOrder?: "asc" | "desc";
+  sortOrder?: 'asc' | 'desc';
 };
 
 export type SearchVodResult = {
