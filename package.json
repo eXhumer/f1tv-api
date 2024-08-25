@@ -19,7 +19,8 @@
   "license": "AGPL-3.0-only",
   "files": [
     "dist/*",
-    "src/*"
+    "src/*",
+    "library.ts"
   ],
   "publishConfig": {
     "access": "public"

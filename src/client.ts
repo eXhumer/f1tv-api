@@ -48,17 +48,15 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     this.language = language;
     this.platform = platform;
 
-    this.once('ascendonUpdated', () => {
-      this.once('locationUpdated', () => {
-        this.once('configUpdated', () => {
-          this.emit('ready');
-        });
-
-        this.refreshConfig();
+    this.once('locationUpdated', () => {
+      this.once('configUpdated', () => {
+        this.emit('ready');
       });
 
-      this.refreshLocation();
+      this.refreshConfig();
     });
+
+    this.refreshLocation();
   }
 
   public get ascendon() {
