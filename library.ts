@@ -15,19 +15,8 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-export { F1TVClient } from './client';
+export { F1TVClient } from './src/client';
 export {
-  APIResult,
-  Config,
-  ContentPlayResult,
-  ContentVideoContainer,
-  ContentVideoResult,
   DecodedAscendonToken,
-  EntitlementResult,
-  Language,
-  LiveNowResult,
-  LocationResult,
-  Platform,
-  SearchVodParams,
-  SearchVodResult,
-} from './type';
+  F1TV,
+} from './src/type';

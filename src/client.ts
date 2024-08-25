@@ -16,47 +16,49 @@
 */
 
 import { jwtDecode, InvalidTokenError } from 'jwt-decode';
-import {
-  APIResult,
-  Config,
-  ContentPlayResult,
-  ContentVideoResult,
-  DecodedAscendonToken,
-  EntitlementResult,
-  Language,
-  LiveNowResult,
-  LocationResult,
-  Platform,
-  SearchVodParams,
-  SearchVodResult,
-} from './type';
+import { F1TV, DecodedAscendonToken } from './type';
 import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
+import { Dispatcher, getGlobalDispatcher, request } from 'undici';
+import { name, repository, version } from '../package.json';
 
-type F1TVClientEvents = {
-  locationReady: () => void;
-};
+type RequestOptions = Omit<Dispatcher.RequestOptions, "origin" | "path" | "method"> & Partial<Pick<Dispatcher.RequestOptions, "method">>;
 
-export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
+export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
   static BASE_URL = 'https://f1tv.formula1.com';
   static IMAGE_RESIZER_URL = 'https://f1tv.formula1.com/image-resizer/image';
   readonly language: string;
   readonly platform: string;
   private _ascendon: string | null = null;
-  private _config: Config | null = null;
+  private _config: F1TV.Config | null = null;
+  private _dispatcher: Dispatcher;
   private _entitlement: string | null = null;
-  private _location: LocationResult | null = null;
+  private _location: F1TV.LocationResult | null = null;
+  private _user_agent: string;
 
-  constructor(ascendon: string | null = null, language: Language = Language.ENGLISH, platform: Platform = Platform.WEB_DASH) {
+  constructor(ascendon: string | null = null,
+              language: F1TV.Language = F1TV.Language.ENGLISH,
+              platform: F1TV.Platform = F1TV.Platform.WEB_DASH,
+              dispatcher: Dispatcher = getGlobalDispatcher(),
+              user_agent = `${name}/${version} (${repository.url})`) {
     super();
+    this._dispatcher = dispatcher;
+    this._user_agent = user_agent;
 
     this.ascendon = ascendon;
     this.language = language;
     this.platform = platform;
-  
-    if (!ascendon)
-      this.refreshLocation();
 
-    this.refreshConfig();
+    this.once('ascendonUpdated', () => {
+      this.once('locationUpdated', () => {
+        this.once('configUpdated', () => {
+          this.emit('ready');
+        });
+
+        this.refreshConfig();
+      });
+
+      this.refreshLocation();
+    });
   }
 
   public get ascendon() {
@@ -67,17 +69,18 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     try {
       this._ascendon = ascendon;
       this._entitlement = null;
-      
+
       if (ascendon) {
         this.decodedAscendon;
         this.refreshEntitlement();
       }
-    } catch (e) {
-      if (e instanceof InvalidTokenError)
-        throw new Error('Invalid Ascendon token');
 
-      else
-        throw e;
+      this.emit('ascendonUpdated');
+    } catch (e) {
+      this.emit('ascendonError',
+        e instanceof InvalidTokenError ?
+          Error('Invalid Ascendon token') :
+          e as Error);
     }
   }
 
@@ -122,12 +125,12 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
     contentPlayUrl += '?' + new URLSearchParams(params).toString();
 
-    const res = await fetch(contentPlayUrl, { headers: { ascendontoken: this._ascendon, entitlementtoken: this._entitlement } });
+    const res = await this.requestUA(contentPlayUrl, { headers: { ascendontoken: this._ascendon, entitlementtoken: this._entitlement } });
 
-    if (!res.ok)
-      throw new Error(`Failed to play content: ${res.statusText} ${JSON.stringify(await res.json())}`);
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to play content (Status Code ${res.statusCode}) ${await res.body.text()}`);
 
-    return await res.json() as APIResult<ContentPlayResult>;
+    return await res.body.json() as F1TV.ContentPlayAPIResult;
   };
 
   public contentVideo = async (contentId: number) => {
@@ -156,12 +159,12 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (this._entitlement)
       headers.entitlementtoken = this._entitlement;
       
-    const res = await fetch(contentVideoUrl, { headers });
+    const res = await this.requestUA(contentVideoUrl, { headers });
 
-    if (!res.ok)
-      throw new Error(`Failed to get video content: ${res.statusText} ${JSON.stringify(await res.json())}`);
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get video content (Status Code ${res.statusCode}):${await res.body.text()}`);
 
-    const { resultObj } = await res.json() as APIResult<ContentVideoResult>;
+    const { resultObj } = await res.body.json() as F1TV.ContentVideoAPIResult;
 
     if (resultObj.containers.length === 0)
       throw new Error('No containers found');
@@ -189,12 +192,12 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       userLocation.groupId.toString(),
     ].join('/');
 
-    const res = await fetch(liveNowUrl);
+    const res = await this.requestUA(liveNowUrl);
 
-    if (!res.ok)
-      throw new Error(`Failed to get live now: ${res.statusText} ${JSON.stringify(await res.json())}`);
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get live now (Status Code${res.statusCode}): ${await res.body.text()}`);
 
-    return await res.json() as APIResult<LiveNowResult>;
+    return await res.body.json() as F1TV.LiveNowAPIResult;
   };
 
   public loginStatus = () => {
@@ -217,26 +220,32 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
 
     pictureUrl += '?' + pictureParams.toString();
 
-    const res = await fetch(pictureUrl);
+    const res = await this.requestUA(pictureUrl);
 
-    if (!res.ok)
-      throw new Error(`Failed to get picture: ${res.statusText} ${JSON.stringify(await res.json())}`);
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get picture (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
-    return await res.blob();
+    return await res.body.blob();
   };
 
-  private refreshConfig = async () => {
-    const res = await fetch(`${F1TVClient.BASE_URL}/config`);
-
-    if (!res.ok)
-      throw new Error(`Failed to get config: ${res.statusText} ${JSON.stringify(await res.json())}`);
-
-    this._config = await res.json() as Config;
+  public refreshConfig = () => {
+    this.requestUA(`${F1TVClient.BASE_URL}/config`)
+      .then(async res => {
+        if (res.statusCode >= 400)
+          throw new Error(`Failed to get config (Status Code ${res.statusCode}): ${await res.body.text()}`);
+    
+        this._config = await res.body.json() as F1TV.Config;
+    
+        this.emit('configUpdated');
+      })
+      .catch(err => {
+        this.emit('configError', err);
+      });
   };
 
-  public refreshEntitlement = async () => {
+  public refreshEntitlement = () => {
     if (!this.ascendon)
-      throw new Error('ascendon token is not set, unable to retrieve entitlement');
+      throw new Error('ascendon token is not set');
 
     let entitlementUrl = [
       F1TVClient.BASE_URL,
@@ -247,19 +256,23 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       'ALL/USER/ENTITLEMENT',
     ].join('/');
 
-    const res = await fetch(entitlementUrl, { headers: { ascendontoken: this.ascendon } });
+    this.requestUA(entitlementUrl, { headers: { ascendontoken: this.ascendon } })
+      .then(async res => {
+        if (res.statusCode >= 400)
+          throw new Error(`Failed to get entitlement (Status Code ${res.statusCode}): ${await res.body.text()}}`);
+      
+        const { resultObj } = await res.body.json() as F1TV.EntitlementAPIResult;
+    
+        this._entitlement = resultObj.entitlementToken;
 
-    if (!res.ok)
-      throw new Error(`Failed to get entitlement: ${res.statusText} ${JSON.stringify(await res.json())}`);
-  
-    const { resultObj } = await res.json() as APIResult<EntitlementResult>;
-
-    this._entitlement = resultObj.entitlementToken;
-
-    await this.refreshLocation();
+        this.emit('entitlementUpdated');
+      })
+      .catch(err => {
+        this.emit('entitlementError', err);
+      });
   };
 
-  public refreshLocation = async () => {
+  public refreshLocation = () => {
     const locationUrl = [
       F1TVClient.BASE_URL,
       '1.0',
@@ -269,20 +282,32 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
       'ALL/USER/LOCATION',
     ].join('/');
 
-    const res = await fetch(locationUrl, { headers: this._entitlement ? { entitlementtoken: this._entitlement } : undefined });
+    this.requestUA(locationUrl, { headers: this._entitlement ? { entitlementtoken: this._entitlement } : undefined })
+      .then(async res => {
+        if (res.statusCode >= 400)
+          throw new Error(`Failed to get location (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
-    if (!res.ok)
-      throw new Error(`Failed to get location: ${res.statusText} ${JSON.stringify(await res.json())}`);
-
-    const { resultObj } = await res.json() as APIResult<LocationResult>;
-    const oldLocation = this._location;
-    this._location = resultObj;
-
-    if (!oldLocation)
-      this.emit('locationReady');
+        const { resultObj } = await res.body.json() as F1TV.LocationAPIResult;
+        this._location = resultObj;
+        this.emit('locationUpdated');
+      })
+      .catch(err => {
+        this.emit('locationError', err);
+      });
   }
 
-  public searchVod = async (params?: SearchVodParams) => {
+  private requestUA = (url: any, opts?: RequestOptions) => {
+    opts = opts || {};
+    opts.headers = opts.headers || {};
+    opts.headers = {
+      'User-Agent': this._user_agent,
+      ...opts.headers,
+    };
+
+    return request(url, { dispatcher: this._dispatcher } && opts);
+  };
+
+  public searchVod = async (params?: F1TV.SearchVodParams) => {
     if (!this._location || this._location.userLocation.length === 0)
       throw new Error('location is not set');
 
@@ -302,20 +327,11 @@ export class F1TVClient extends TypedEventEmitter<F1TVClientEvents> {
     if (params)
       searchVodUrl += '?' + new URLSearchParams(params).toString();
 
-    const res = await fetch(searchVodUrl);
+    const res = await this.requestUA(searchVodUrl);
 
-    if (!res.ok)
-      throw new Error(`Failed to search VOD: ${res.statusText} ${JSON.stringify(await res.json())}`);
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to search VOD (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
-    return await res.json() as APIResult<SearchVodResult>;
-  };
-
-  public whenLocationReady = async () => {
-    if (this._location)
-      return;
-
-    return await new Promise<void>((resolve) => {
-      this.once('locationReady', resolve);
-    });
+    return await res.body.json() as F1TV.SearchVodAPIResult;
   };
 }
