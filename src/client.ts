@@ -173,6 +173,10 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     return resultObj.containers[0];
   };
 
+  public get isReady() {
+    return this._config !== null && this._location !== null;
+  };
+
   public liveNow = async () => {
     if (!this._location || this._location.userLocation.length === 0)
       throw new Error('location is not set');
