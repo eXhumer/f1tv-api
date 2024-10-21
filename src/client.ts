@@ -101,7 +101,7 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     return this._location;
   }
 
-  public contentPlay = async (contentId: number, channelId?: number) => {
+  public contentPlay = async (contentId: number, channelId?: number, platform?: F1TV.Platform) => {
     if (!this._ascendon || !this._entitlement)
       throw new Error('ascendon token or entitlement token is not set, unable to play content');
   
@@ -110,7 +110,7 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
       '2.0',
       this.loginStatus(),
       this.language,
-      this.platform,
+      platform || this.platform,
       'ALL/CONTENT/PLAY',
     ].join('/');
 
