@@ -306,7 +306,10 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
       ...opts.headers,
     };
 
-    return request(url, { dispatcher: this._dispatcher } && opts);
+    return request(url, {
+      dispatcher: this._dispatcher,
+      ...opts,
+    });
   };
 
   public searchVod = async (params?: F1TV.SearchVodParams) => {
