@@ -15,6 +15,8 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
+import { type JwtPayload } from 'jsonwebtoken';
+
 export namespace F1TV {
   export type APIResult<T> = {
     resultCode: string;
@@ -771,7 +773,7 @@ export namespace F1TV {
   };
 };
 
-export type DecodedAscendonToken = {
+export type DecodedAscendonToken = JwtPayload & {
   ExternalAuthorizationsContextData: string;
   SubscriptionStatus: string;
   SubscriberId: string;

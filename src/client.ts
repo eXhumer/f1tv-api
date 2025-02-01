@@ -15,13 +15,71 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { jwtDecode, InvalidTokenError } from 'jwt-decode';
-import { F1TV, DecodedAscendonToken } from './type';
+import jwt from 'jsonwebtoken';
+import { JwksClient } from 'jwks-rsa';
+
 import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 import { Dispatcher, getGlobalDispatcher, request } from 'undici';
+
+import { F1TV, DecodedAscendonToken } from './type';
 import { name, repository, version } from '../package.json';
 
 type RequestOptions = Omit<Dispatcher.RequestOptions, "origin" | "path" | "method"> & Partial<Pick<Dispatcher.RequestOptions, "method">>;
+
+export const verifyF1TVSubscriptionToken = (subscriptionToken: string): Promise<DecodedAscendonToken> => {
+  return new Promise((resolve, reject) => {
+    if (typeof subscriptionToken !== 'string' || subscriptionToken.length === 0) {
+      reject(new Error('subscriptionToken provided is not a valid JWT token!'));
+      return;
+    }
+
+    const jwksClient = new JwksClient({
+      jwksUri: 'https://api.formula1.com/static/jwks.json',
+    });
+
+    jwt.verify(
+      subscriptionToken,
+      (hdr, cb) => {
+        if (!hdr.kid) {
+          cb(new Error('KID not available in subscriptionToken header!'));
+          return;
+        }
+
+        jwksClient.getSigningKey(hdr.kid, (err, key) => {
+          if (err) {
+            cb(err);
+            return;
+          }
+    
+          if (!key) {
+            cb(new Error('invalid key!'));
+            return;
+          }
+    
+          cb(null, key.getPublicKey());
+        });
+      },
+      (err, decoded) => {
+        if (err) {
+          reject(err);
+          return;
+        }
+
+        if (!decoded) {
+          reject(new Error('No decoded JWT token received!'));
+          return;
+        }
+
+        if (typeof decoded === 'string') {
+          reject(new Error('Received decoded JWT token as string! Aborting!'));
+          return;
+        }
+
+        resolve(decoded as DecodedAscendonToken);
+      },
+    );
+  });
+};
 
 export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
   static BASE_URL = 'https://f1tv.formula1.com';
@@ -29,6 +87,7 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
   readonly language: string;
   readonly platform: string;
   private _ascendon: string | null = null;
+  private _decodedAscendon: DecodedAscendonToken | null = null;
   private _config: F1TV.Config | null = null;
   private _dispatcher: Dispatcher;
   private _entitlement: string | null = null;
@@ -64,21 +123,22 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
   }
 
   public set ascendon (ascendon: string | null) {
-    try {
-      this._ascendon = ascendon;
-      this._entitlement = null;
+    this._ascendon = null;
+    this._entitlement = null;
 
-      if (ascendon) {
-        this.decodedAscendon;
-        this.refreshEntitlement();
-      }
-
+    if (ascendon) {
+      verifyF1TVSubscriptionToken(ascendon)
+        .then(decodedAscendon => {
+          this._ascendon = ascendon;
+          this._decodedAscendon = decodedAscendon;
+          this.refreshEntitlement();
+          this.emit('ascendonUpdated');
+        })
+        .catch(err => {
+          this.emit('ascendonError', err);
+        });
+    } else {
       this.emit('ascendonUpdated');
-    } catch (e) {
-      this.emit('ascendonError',
-        e instanceof InvalidTokenError ?
-          Error('Invalid Ascendon token') :
-          e as Error);
     }
   }
 
@@ -87,10 +147,7 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
   }
 
   public get decodedAscendon() {
-    if (!this._ascendon)
-      throw new Error('ascendon token is not set');
-
-    return jwtDecode<DecodedAscendonToken>(this._ascendon);
+    return this._decodedAscendon;
   }
 
   public get entitlement() {
