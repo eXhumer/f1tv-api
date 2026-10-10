@@ -1,6 +1,6 @@
 /*
   f1tv-api - Unofficial F1TV API client for JavaScript/TypeScript
-  Copyright (C) 2024  eXhumer
+  Copyright (C) 2024-2026  eXhumer
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -15,10 +15,8 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import jwt from 'jsonwebtoken';
-import { JwksClient } from 'jwks-rsa';
+import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from 'jose';
 
-import { TypedEventEmitter } from '@tiny-libs/typed-event-emitter'
 import { Dispatcher, getGlobalDispatcher, request } from 'undici';
 
 import { F1TV, DecodedAscendonToken } from './type';
@@ -26,120 +24,73 @@ import { name, repository, version } from '../package.json';
 
 type RequestOptions = Omit<Dispatcher.RequestOptions, "origin" | "path" | "method"> & Partial<Pick<Dispatcher.RequestOptions, "method">>;
 
-export const verifyF1TVSubscriptionToken = (subscriptionToken: string): Promise<DecodedAscendonToken> => {
-  return new Promise((resolve, reject) => {
-    if (typeof subscriptionToken !== 'string' || subscriptionToken.length === 0) {
-      reject(new Error('subscriptionToken provided is not a valid JWT token!'));
-      return;
-    }
+const F1TV_JWKS = createRemoteJWKSet(new URL('https://api.formula1.com/static/jwks.json'));
 
-    const jwksClient = new JwksClient({
-      jwksUri: 'https://api.formula1.com/static/jwks.json',
-    });
+export const verifyF1TVSubscriptionToken = async (subscriptionToken: string): Promise<DecodedAscendonToken> => {
+  if (typeof subscriptionToken !== 'string' || subscriptionToken.length === 0)
+    throw new Error('subscriptionToken provided is not a valid JWT token!');
 
-    jwt.verify(
-      subscriptionToken,
-      (hdr, cb) => {
-        if (!hdr.kid) {
-          cb(new Error('KID not available in subscriptionToken header!'));
-          return;
-        }
+  if (!decodeProtectedHeader(subscriptionToken).kid)
+    throw new Error('KID not available in subscriptionToken header!');
 
-        jwksClient.getSigningKey(hdr.kid, (err, key) => {
-          if (err) {
-            cb(err);
-            return;
-          }
-    
-          if (!key) {
-            cb(new Error('invalid key!'));
-            return;
-          }
-    
-          cb(null, key.getPublicKey());
-        });
-      },
-      (err, decoded) => {
-        if (err) {
-          reject(err);
-          return;
-        }
+  const { payload } = await jwtVerify<DecodedAscendonToken>(subscriptionToken, F1TV_JWKS);
 
-        if (!decoded) {
-          reject(new Error('No decoded JWT token received!'));
-          return;
-        }
-
-        if (typeof decoded === 'string') {
-          reject(new Error('Received decoded JWT token as string! Aborting!'));
-          return;
-        }
-
-        resolve(decoded as DecodedAscendonToken);
-      },
-    );
-  });
+  return payload;
 };
 
-export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
+export type F1TVClientOptions = {
+  ascendon?: string | null;
+  language?: F1TV.Language;
+  platform?: F1TV.Platform;
+  dispatcher?: Dispatcher;
+  userAgent?: string;
+};
+
+export class F1TVClient {
   static BASE_URL = 'https://f1tv.formula1.com';
   static IMAGE_RESIZER_URL = 'https://f1tv.formula1.com/image-resizer/image';
-  readonly language: string;
-  readonly platform: string;
+  readonly language: F1TV.Language;
+  readonly platform: F1TV.Platform;
   private _ascendon: string | null = null;
   private _decodedAscendon: DecodedAscendonToken | null = null;
-  private _config: F1TV.Config | null = null;
+  private _config!: F1TV.Config;
   private _dispatcher: Dispatcher;
   private _entitlement: string | null = null;
-  private _location: F1TV.LocationResult | null = null;
+  private _location!: F1TV.LocationResult;
+  // Bumped by every login() and logout() so a slower, older call can't overwrite newer state.
+  private _session = 0;
   private _user_agent: string;
 
-  constructor(ascendon: string | null = null,
-              language: F1TV.Language = F1TV.Language.ENGLISH,
-              platform: F1TV.Platform = F1TV.Platform.WEB_DASH,
-              dispatcher: Dispatcher = getGlobalDispatcher(),
-              user_agent = `${name}/${version} (${repository.url})`) {
-    super();
+  private constructor({
+    language = F1TV.Language.ENGLISH,
+    platform = F1TV.Platform.WEB_DASH,
+    dispatcher = getGlobalDispatcher(),
+    userAgent = `${name}/${version} (${repository.url})`,
+  }: F1TVClientOptions) {
     this._dispatcher = dispatcher;
-    this._user_agent = user_agent;
+    this._user_agent = userAgent;
 
-    this.ascendon = ascendon;
     this.language = language;
     this.platform = platform;
+  }
 
-    this.once('locationUpdated', () => {
-      this.once('configUpdated', () => {
-        this.emit('ready');
-      });
+  /**
+   * Creates a client with config and location loaded. If `ascendon` is given, also logs in and
+   * rejects if the token is invalid.
+   */
+  static async create(options: F1TVClientOptions = {}) {
+    const client = new F1TVClient(options);
 
-      this.refreshConfig();
-    });
+    await Promise.all([client.refreshConfig(), client.refreshLocation()]);
 
-    this.refreshLocation();
+    if (options.ascendon)
+      await client.login(options.ascendon);
+
+    return client;
   }
 
   public get ascendon() {
     return this._ascendon;
-  }
-
-  public set ascendon (ascendon: string | null) {
-    this._ascendon = null;
-    this._entitlement = null;
-
-    if (ascendon) {
-      verifyF1TVSubscriptionToken(ascendon)
-        .then(decodedAscendon => {
-          this._ascendon = ascendon;
-          this._decodedAscendon = decodedAscendon;
-          this.refreshEntitlement();
-          this.emit('ascendonUpdated');
-        })
-        .catch(err => {
-          this.emit('ascendonError', err);
-        });
-    } else {
-      this.emit('ascendonUpdated');
-    }
   }
 
   public get config() {
@@ -183,17 +134,15 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     const res = await this.requestUA(contentPlayUrl, { headers: { ascendontoken: this._ascendon, entitlementtoken: this._entitlement } });
 
     if (res.statusCode >= 400)
-      throw new Error(`Failed to play content (Status Code ${res.statusCode}) ${await res.body.text()}`);
+      throw new Error(`Failed to play content (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
     return await res.body.json() as F1TV.ContentPlayAPIResult;
   };
 
+  /** Returns the first container if F1TV returns more than one. */
   public contentVideo = async (contentId: number) => {
     if (!this._location || this._location.userLocation.length === 0)
       throw new Error('location is not set');
-
-    if (!this._entitlement)
-      console.warn('entitlement token is not set');
 
     const userLocation = this._location.userLocation[0];
 
@@ -217,21 +166,14 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     const res = await this.requestUA(contentVideoUrl, { headers });
 
     if (res.statusCode >= 400)
-      throw new Error(`Failed to get video content (Status Code ${res.statusCode}):${await res.body.text()}`);
+      throw new Error(`Failed to get video content (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
     const { resultObj } = await res.body.json() as F1TV.ContentVideoAPIResult;
 
     if (resultObj.containers.length === 0)
       throw new Error('No containers found');
 
-    else if (resultObj.containers.length > 1)
-      console.warn('Multiple containers found, returning the first one');
-
     return resultObj.containers[0];
-  };
-
-  public get isReady() {
-    return this._config !== null && this._location !== null;
   };
 
   public liveNow = async () => {
@@ -254,9 +196,41 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     const res = await this.requestUA(liveNowUrl);
 
     if (res.statusCode >= 400)
-      throw new Error(`Failed to get live now (Status Code${res.statusCode}): ${await res.body.text()}`);
+      throw new Error(`Failed to get live now (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
     return await res.body.json() as F1TV.LiveNowAPIResult;
+  };
+
+  /**
+   * Verifies the ascendon token, fetches its entitlement and refreshes location. On failure the
+   * client keeps its previous state. Rejects if a later login() or logout() was called meanwhile.
+   */
+  public login = async (ascendon: string) => {
+    const session = ++this._session;
+
+    const decodedAscendon = await verifyF1TVSubscriptionToken(ascendon);
+    const entitlement = await this.fetchEntitlement(ascendon);
+
+    if (session !== this._session)
+      throw new Error('login superseded by a later login() or logout()');
+
+    this._ascendon = ascendon;
+    this._decodedAscendon = decodedAscendon;
+    this._entitlement = entitlement;
+
+    await this.refreshLocation();
+
+    return decodedAscendon;
+  };
+
+  /** Clears the ascendon token and entitlement, then refreshes location as anonymous. */
+  public logout = async () => {
+    this._session++;
+    this._ascendon = null;
+    this._decodedAscendon = null;
+    this._entitlement = null;
+
+    await this.refreshLocation();
   };
 
   public loginStatus = () => {
@@ -287,51 +261,33 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
     return await res.body.blob();
   };
 
-  public refreshConfig = () => {
-    this.requestUA(`${F1TVClient.BASE_URL}/config`)
-      .then(async res => {
-        if (res.statusCode >= 400)
-          throw new Error(`Failed to get config (Status Code ${res.statusCode}): ${await res.body.text()}`);
-    
-        this._config = await res.body.json() as F1TV.Config;
-    
-        this.emit('configUpdated');
-      })
-      .catch(err => {
-        this.emit('configError', err);
-      });
+  public refreshConfig = async () => {
+    const res = await this.requestUA(`${F1TVClient.BASE_URL}/config`);
+
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get config (Status Code ${res.statusCode}): ${await res.body.text()}`);
+
+    this._config = await res.body.json() as F1TV.Config;
+
+    return this._config;
   };
 
-  public refreshEntitlement = () => {
-    if (!this.ascendon)
+  public refreshEntitlement = async () => {
+    if (!this._ascendon)
       throw new Error('ascendon token is not set');
 
-    let entitlementUrl = [
-      F1TVClient.BASE_URL,
-      '2.0',
-      this.loginStatus(),
-      this.language,
-      this.platform,
-      'ALL/USER/ENTITLEMENT',
-    ].join('/');
+    const session = this._session;
+    const entitlement = await this.fetchEntitlement(this._ascendon);
 
-    this.requestUA(entitlementUrl, { headers: { ascendontoken: this.ascendon } })
-      .then(async res => {
-        if (res.statusCode >= 400)
-          throw new Error(`Failed to get entitlement (Status Code ${res.statusCode}): ${await res.body.text()}}`);
-      
-        const { resultObj } = await res.body.json() as F1TV.EntitlementAPIResult;
-    
-        this._entitlement = resultObj.entitlementToken;
+    if (session === this._session)
+      this._entitlement = entitlement;
 
-        this.emit('entitlementUpdated');
-      })
-      .catch(err => {
-        this.emit('entitlementError', err);
-      });
+    return entitlement;
   };
 
-  public refreshLocation = () => {
+  public refreshLocation = async () => {
+    const session = this._session;
+
     const locationUrl = [
       F1TVClient.BASE_URL,
       '1.0',
@@ -341,31 +297,47 @@ export class F1TVClient extends TypedEventEmitter<F1TV.ClientEvent> {
       'ALL/USER/LOCATION',
     ].join('/');
 
-    this.requestUA(locationUrl, { headers: this._entitlement ? { entitlementtoken: this._entitlement } : undefined })
-      .then(async res => {
-        if (res.statusCode >= 400)
-          throw new Error(`Failed to get location (Status Code ${res.statusCode}): ${await res.body.text()}`);
+    const res = await this.requestUA(locationUrl, { headers: this._entitlement ? { entitlementtoken: this._entitlement } : undefined });
 
-        const { resultObj } = await res.body.json() as F1TV.LocationAPIResult;
-        this._location = resultObj;
-        this.emit('locationUpdated');
-      })
-      .catch(err => {
-        this.emit('locationError', err);
-      });
-  }
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get location (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
-  private requestUA = (url: any, opts?: RequestOptions) => {
-    opts = opts || {};
-    opts.headers = opts.headers || {};
-    opts.headers = {
-      'User-Agent': this._user_agent,
-      ...opts.headers,
-    };
+    const { resultObj } = await res.body.json() as F1TV.LocationAPIResult;
 
+    if (session === this._session)
+      this._location = resultObj;
+
+    return resultObj;
+  };
+
+  private fetchEntitlement = async (ascendon: string) => {
+    const entitlementUrl = [
+      F1TVClient.BASE_URL,
+      '2.0',
+      'R',
+      this.language,
+      this.platform,
+      'ALL/USER/ENTITLEMENT',
+    ].join('/');
+
+    const res = await this.requestUA(entitlementUrl, { headers: { ascendontoken: ascendon } });
+
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get entitlement (Status Code ${res.statusCode}): ${await res.body.text()}`);
+
+    const { resultObj } = await res.body.json() as F1TV.EntitlementAPIResult;
+
+    return resultObj.entitlementToken;
+  };
+
+  private requestUA = (url: string, opts: RequestOptions = {}) => {
     return request(url, {
-      dispatcher: this._dispatcher,
       ...opts,
+      dispatcher: this._dispatcher,
+      headers: {
+        'User-Agent': this._user_agent,
+        ...opts.headers,
+      },
     });
   };
 

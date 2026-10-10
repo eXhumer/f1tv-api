@@ -1,6 +1,6 @@
 /*
   f1tv-api - Unofficial F1TV API client for JavaScript/TypeScript
-  Copyright (C) 2024  eXhumer
+  Copyright (C) 2024-2026  eXhumer
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -15,8 +15,8 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-export { F1TVClient } from './src/client';
+export { F1TVClient, type F1TVClientOptions } from './client';
 export {
-  DecodedAscendonToken,
+  type DecodedAscendonToken,
   F1TV,
-} from './src/type';
+} from './type';

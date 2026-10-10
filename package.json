@@ -1,41 +1,61 @@
 {
   "name": "@exhumer/f1tv-api",
-  "version": "2.4.0",
+  "version": "3.0.0",
   "description": "Unofficial F1TV API client for JavaScript/TypeScript",
-  "main": "dist/library.js",
-  "types": "dist/library.d.ts",
+  "type": "module",
+  "license": "AGPL-3.0-only",
   "author": {
     "name": "eXhumer",
-    "email": "exhumer1@protonmail.com"
+    "email": "github@exhumer.cc"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eXhumer/f1tv-api.git"
+    "url": "https://github.com/eXhumer/f1tv-api"
   },
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "yarn clean && tsc"
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
   },
-  "license": "AGPL-3.0-only",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "files": [
-    "dist/*",
-    "src/*",
-    "library.ts"
+    "dist"
   ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
   "publishConfig": {
     "access": "public"
   },
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": ">=22.19.0"
+    },
+    "packageManager": {
+      "name": "npm"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "typecheck": "tsc --noEmit"
+  },
   "devDependencies": {
-    "rimraf": "^6.0.1",
-    "ts-node": "^10.9.2",
-    "tslib": "^2.8.1",
-    "typescript": "^5.7.3"
+    "@types/node": "^26.6.5",
+    "tsdown": "^0.23.1",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@tiny-libs/typed-event-emitter": "^1.0.0",
-    "jsonwebtoken": "^9.0.2",
-    "jwks-rsa": "^3.1.0",
-    "undici": "^7.3.0"
-  },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+    "jose": "^6.2.12",
+    "undici": "^8.11.2"
+  }
 }

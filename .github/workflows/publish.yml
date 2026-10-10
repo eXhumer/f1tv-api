@@ -1,36 +1,45 @@
-name: Publish Package to NPM registry
+name: Publish
 
 on:
-  workflow_dispatch:
   push:
     tags:
-      - '*'
+      - "v*"
+  workflow_dispatch:
 
 jobs:
-  publish-npm:
+  publish:
+    name: Build and publish to npm
     runs-on: ubuntu-latest
 
     permissions:
-      id-token: write    
+      contents: read
+      id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
         with:
-          node-version: 20
-          registry-url: 'https://registry.npmjs.org'
+          node-version: 22
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # nodejs/node#62425 & npm/cli#9151
+      - run: npm install -g npm@11.11.0
+
+      # Ensure npm 11.5.1 or later for trusted publishing
+      - run: npm install -g npm@latest
 
       - name: Install dependencies
-        run: yarn --frozen-lockfile
+        run: npm ci
 
-      - name: Build package
-        run: yarn tsc
+      - name: Type check
+        run: npm run typecheck
 
-      - name: Publish to npm registry
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-          NPM_CONFIG_PROVENANCE: true
+      - name: Build
+        run: npm run build
+
+      - name: Publish with provenance
+        run: npm stage publish --provenance --access public

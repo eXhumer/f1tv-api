@@ -1,6 +1,6 @@
 /*
   f1tv-api - Unofficial F1TV API client for JavaScript/TypeScript
-  Copyright (C) 2024  eXhumer
+  Copyright (C) 2024-2026  eXhumer
 
   This program is free software: you can redistribute it and/or modify
   it under the terms of the GNU Affero General Public License as
@@ -15,7 +15,7 @@
   along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-import { type JwtPayload } from 'jsonwebtoken';
+import type { JWTPayload } from 'jose';
 
 export namespace F1TV {
   export type APIResult<T> = {
@@ -24,18 +24,6 @@ export namespace F1TV {
     errorDescription: string;
     resultObj: T;
     systemTime: number;
-  };
-
-  export type ClientEvent = {
-    ascendonError: (e: Error) => void;
-    ascendonUpdated: () => void;
-    configError: (e: Error) => void;
-    configUpdated: () => void;
-    entitlementError: (e: Error) => void;
-    entitlementUpdated: () => void;
-    locationError: (e: Error) => void;
-    locationUpdated: () => void;
-    ready: () => void;
   };
 
   export type Config = {
@@ -773,7 +761,7 @@ export namespace F1TV {
   };
 };
 
-export type DecodedAscendonToken = JwtPayload & {
+export type DecodedAscendonToken = JWTPayload & {
   ExternalAuthorizationsContextData: string;
   SubscriptionStatus: string;
   SubscriberId: string;
