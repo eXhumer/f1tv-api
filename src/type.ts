@@ -631,14 +631,6 @@ export namespace F1TV {
         href: string;
       }[];
       containers: {
-        categories: {
-          externalPathIds: string[];
-          startDate: number;
-          categoryId: number;
-          endDate: number;
-          categoryPathIds: number[];
-          orderId: number;
-        }[];
         bundles: {
           bundleId: number;
           bundleType: string;
@@ -648,17 +640,24 @@ export namespace F1TV {
         }[];
       };
       platformVariants: {
-        subtitlesLanguages: any[];
-        audioLanguages: {
-          audioLanguageName: string;
-          audioId: string;
-          isPreferred: boolean;
-        }[];
+        cpId: number;
+        subtitlesLanguages: unknown[];
+        pictureUrl: string;
+        /** A placeholder (`dummyvideo.m3u8`); play through contentPlay(). */
+        videoUrl: string;
+        audioLanguages: ContentVideoAudioLanguage[];
+        hasTrailer: boolean;
+        videoType: string;
         technicalPackages: {
           packageId: number;
           packageName: string;
           packageType: string;
         }[];
+      }[];
+      parents: {
+        parentId: number;
+        parentType: string;
+        parentSubType: string;
       }[];
       properties: {
         meeting_Number: number;
@@ -727,13 +726,19 @@ export namespace F1TV {
         episodeNumber: number;
         contractEndDate: number;
         externalId: string;
-        availableAlso: Platform[];
+        availableAlso: `${Platform}`[];
         title: string;
         titleBrief: string;
         objectType: string;
         duration: number;
         genres: string[];
         contentSubtype: string;
+        isCopyProtected: boolean;
+        copyProtections: {
+          securityCode: string;
+          securityOption: string;
+        }[];
+        contentOptions: unknown[];
         pcLevel: number;
         contentId: number;
         starRating: number;
