@@ -19,6 +19,7 @@ import { createRemoteJWKSet, decodeProtectedHeader, jwtVerify } from 'jose';
 
 import { Dispatcher, getGlobalDispatcher, request } from 'undici';
 
+import { buildDeviceInfo, type F1TVDeviceInfo } from './device-info';
 import { F1TV, DecodedAscendonToken } from './type';
 import { name, repository, version } from '../package.json';
 
@@ -44,6 +45,12 @@ export type F1TVClientOptions = {
   platform?: F1TV.Platform;
   dispatcher?: Dispatcher;
   userAgent?: string;
+  /**
+   * Values for the `x-f1-device-info` header sent with contentPlay(), actionPlay() and
+   * contentUserSelections(). `multiView` defaults to
+   * `true` and is only sent as `true` for OPS, VIP or PREMIUM locations.
+   */
+  deviceInfo?: F1TVDeviceInfo;
 };
 
 export class F1TVClient {
@@ -53,10 +60,13 @@ export class F1TVClient {
   readonly platform: F1TV.Platform;
   private _ascendon: string | null = null;
   private _decodedAscendon: DecodedAscendonToken | null = null;
+  private _deviceInfo: F1TVDeviceInfo | null;
   private _config!: F1TV.Config;
   private _dispatcher: Dispatcher;
   private _entitlement: string | null = null;
   private _location!: F1TV.LocationResult;
+  private _playApiVersion: string | null = null;
+  private _videoApiVersion: string | null = null;
   // Bumped by every login() and logout() so a slower, older call can't overwrite newer state.
   private _session = 0;
   private _user_agent: string;
@@ -66,7 +76,9 @@ export class F1TVClient {
     platform = F1TV.Platform.WEB_DASH,
     dispatcher = getGlobalDispatcher(),
     userAgent = `${name}/${version} (${repository.url})`,
+    deviceInfo,
   }: F1TVClientOptions) {
+    this._deviceInfo = deviceInfo ?? null;
     this._dispatcher = dispatcher;
     this._user_agent = userAgent;
 
@@ -89,6 +101,47 @@ export class F1TVClient {
     return client;
   }
 
+  /**
+   * Saves the resume position for VOD content (`POST /1.0/R/…/ACTION/PLAY`). `playHeadPosition` is
+   * in seconds and is rounded. The web app reports it on pause, seek, stop, errors, at 25/50/75/90%
+   * and every `config.bitmovin.playProgressCapture.interval` ms, but never for live streams and only
+   * when the position is above `playProgressCapture.minResumeSeconds`.
+   */
+  public actionPlay = async (contentId: number, playHeadPosition: number, contentSubType: string) => {
+    if (!this._ascendon || !this._entitlement)
+      throw new Error('ascendon token or entitlement token is not set, unable to report play position');
+
+    const actionPlayUrl = [
+      F1TVClient.BASE_URL,
+      '1.0',
+      'R',
+      this.language,
+      this.platform,
+      'ALL/ACTION/PLAY',
+    ].join('/');
+
+    const headers: Record<string, string> = {
+      ascendontoken: this._ascendon,
+      entitlementtoken: this._entitlement,
+      'content-type': 'application/json',
+    };
+    const deviceInfo = this.getDeviceInfo();
+
+    if (deviceInfo)
+      headers['x-f1-device-info'] = deviceInfo;
+
+    const res = await this.requestUA(actionPlayUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ contentId, playHeadPosition: Math.round(playHeadPosition), contentSubType }),
+    });
+
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to report play position (Status Code ${res.statusCode}): ${await res.body.text()}`);
+
+    return await res.body.json() as F1TV.ActionPlayAPIResult;
+  };
+
   public get ascendon() {
     return this._ascendon;
   }
@@ -109,13 +162,17 @@ export class F1TVClient {
     return this._location;
   }
 
-  public contentPlay = async (contentId: number, channelId?: number, platform?: F1TV.Platform) => {
+  /** Uses the play API version from the cached config. The result shape depends on `player`. */
+  public contentPlay = async <P extends F1TV.Player>(contentId: number, player: P, channelId?: number, platform?: F1TV.Platform) => {
     if (!this._ascendon || !this._entitlement)
       throw new Error('ascendon token or entitlement token is not set, unable to play content');
+
+    if (!this._playApiVersion)
+      throw new Error('play API version is not available from config');
   
     let contentPlayUrl = [
       F1TVClient.BASE_URL,
-      '2.0',
+      this._playApiVersion,
       this.loginStatus(),
       this.language,
       platform || this.platform,
@@ -125,30 +182,88 @@ export class F1TVClient {
     const params: {
       contentId: string;
       channelId?: string;
-    } = { contentId: contentId.toString() };
+      player: F1TV.Player;
+    } = { contentId: contentId.toString(), player };
     if (channelId)
       params.channelId = channelId.toString();
 
     contentPlayUrl += '?' + new URLSearchParams(params).toString();
 
-    const res = await this.requestUA(contentPlayUrl, { headers: { ascendontoken: this._ascendon, entitlementtoken: this._entitlement } });
+    const headers: Record<string, string> = { ascendontoken: this._ascendon, entitlementtoken: this._entitlement };
+    const deviceInfo = this.getDeviceInfo();
+
+    if (deviceInfo)
+      headers['x-f1-device-info'] = deviceInfo;
+
+    const res = await this.requestUA(contentPlayUrl, { headers });
 
     if (res.statusCode >= 400)
       throw new Error(`Failed to play content (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
-    return await res.body.json() as F1TV.ContentPlayAPIResult;
+    return await res.body.json() as F1TV.ContentPlayAPIResult<P>;
   };
 
-  /** Returns the first container if F1TV returns more than one. */
-  public contentVideo = async (contentId: number) => {
+  /**
+   * Gets the saved resume position and My List state (`POST /2.0/R/…/CONTENT/USERSELECTIONS`), keyed by
+   * content ID. `duration` is the content's `metadata.duration` in seconds. The web app sends this
+   * request (the `personalisation` part of the VIDEO result) when a video page opens, and resumes from
+   * `user.resume.playHeadPosition`.
+   */
+  public contentUserSelections = async (contents: { contentId: number; duration: number }[]) => {
+    if (!this._entitlement)
+      throw new Error('entitlement token is not set, unable to get user selections');
+
     if (!this._location || this._location.userLocation.length === 0)
       throw new Error('location is not set');
 
     const userLocation = this._location.userLocation[0];
 
+    const userSelectionsUrl = [
+      F1TVClient.BASE_URL,
+      '2.0',
+      'R',
+      this.language,
+      this.platform,
+      'ALL/CONTENT/USERSELECTIONS',
+      userLocation.entitlement,
+      userLocation.groupId.toString(),
+    ].join('/');
+
+    const headers: Record<string, string> = {
+      entitlementtoken: this._entitlement,
+      'content-type': 'text/plain;charset=UTF-8',
+    };
+    const deviceInfo = this.getDeviceInfo();
+
+    if (deviceInfo)
+      headers['x-f1-device-info'] = deviceInfo;
+
+    const body = Object.fromEntries(contents.map(({ contentId, duration }) => [contentId, { duration }]));
+
+    const res = await this.requestUA(userSelectionsUrl, { method: 'POST', headers, body: JSON.stringify(body) });
+
+    if (res.statusCode >= 400)
+      throw new Error(`Failed to get user selections (Status Code ${res.statusCode}): ${await res.body.text()}`);
+
+    return await res.body.json() as F1TV.ContentUserSelectionsAPIResult;
+  };
+
+  /**
+   * Uses the video API version from the cached config. Returns the first container if F1TV returns
+   * more than one.
+   */
+  public contentVideo = async (contentId: number) => {
+    if (!this._location || this._location.userLocation.length === 0)
+      throw new Error('location is not set');
+
+    if (!this._videoApiVersion)
+      throw new Error('video API version is not available from config');
+
+    const userLocation = this._location.userLocation[0];
+
     let contentVideoUrl = [
       F1TVClient.BASE_URL,
-      '4.0',
+      this._videoApiVersion,
       this.loginStatus(),
       this.language,
       this.platform,
@@ -233,14 +348,35 @@ export class F1TVClient {
     await this.refreshLocation();
   };
 
+  /**
+   * Builds the `x-f1-device-info` header value from the `deviceInfo` option, or returns null if it
+   * wasn't given. Like the web app, `p` (multiview) is only `true` when the current location
+   * entitlement is OPS, VIP or PREMIUM, and never on Safari.
+   */
+  public getDeviceInfo = () => {
+    if (!this._deviceInfo)
+      return null;
+
+    const entitlement = this._location?.userLocation[0]?.entitlement ?? '';
+    const multiView = (this._deviceInfo.multiView ?? true)
+      && ['OPS', 'VIP', 'PREMIUM'].includes(entitlement)
+      && this._deviceInfo.browser.toLowerCase() !== 'safari';
+
+    return buildDeviceInfo({ ...this._deviceInfo, multiView });
+  };
+
   public loginStatus = () => {
     return this._ascendon === null ? 'A' : 'R';
   }
 
-  public picture = async (slug: string, width: number, height: number, q?: 'HI', o?: 'L', fallback?: 'true') => {
+  /** `variant` picks the web app's crops, for example `/{slug}/landscape_web`. */
+  public picture = async (slug: string, width: number, height: number, q?: 'HI', o?: 'L', fallback?: 'true', variant?: F1TV.PictureVariant) => {
     let pictureUrl = `${F1TVClient.IMAGE_RESIZER_URL}/${slug}`;
 
-    const pictureParams = new URLSearchParams({ width: width.toString(), height: height.toString() });
+    if (variant)
+      pictureUrl += `/${variant}`;
+
+    const pictureParams = new URLSearchParams({ w: width.toString(), h: height.toString() });
 
     if (q)
       pictureParams.append('q', q);
@@ -267,9 +403,13 @@ export class F1TVClient {
     if (res.statusCode >= 400)
       throw new Error(`Failed to get config (Status Code ${res.statusCode}): ${await res.body.text()}`);
 
-    this._config = await res.body.json() as F1TV.Config;
+    const config = await res.body.json() as F1TV.Config;
 
-    return this._config;
+    this._config = config;
+    this._playApiVersion = F1TVClient.parseApiVersion(config.apiConfig?.playAPIVersion);
+    this._videoApiVersion = F1TVClient.parseApiVersion(config.apiConfig?.videoAPIVersion);
+
+    return config;
   };
 
   public refreshEntitlement = async () => {
@@ -309,6 +449,11 @@ export class F1TVClient {
 
     return resultObj;
   };
+
+  /** Returns an API version such as `3.0` as used in URL paths, or null if it isn't one. */
+  private static parseApiVersion(version: unknown) {
+    return typeof version === 'string' && /^\d+\.\d+$/.test(version.trim()) ? version.trim() : null;
+  }
 
   private fetchEntitlement = async (ascendon: string) => {
     const entitlementUrl = [

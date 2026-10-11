@@ -18,6 +18,10 @@
 import type { JWTPayload } from 'jose';
 
 export namespace F1TV {
+  export type ActionPlayAPIResult = {
+    resultCode: string;
+  };
+
   export type APIResult<T> = {
     resultCode: string;
     message: string;
@@ -37,6 +41,10 @@ export namespace F1TV {
       videoAPIVersion: string;
     };
     appIsoCode: string;
+    appBanner: {
+      enabled: boolean;
+      hideAfterDismissPeriodMinutes: number;
+    };
     bitmovin: {
       playbackOffsets: {
         wif: {
@@ -90,11 +98,19 @@ export namespace F1TV {
         };
       };
       limitMaxBitrateByPlayerResolution: boolean;
+      enableMediaKeySystemConfig: boolean;
+    };
+    player: {
+      tm: {
+        license: string;
+        driver20ItemGridEnabled: boolean;
+        chromecastEnabled: boolean;
+      };
     };
     newRelic: {
       licenseKey: string;
-      applicationId: string;
-      accountId: string;
+      applicationID: string;
+      accountID: string;
     };
     ENABLE_ASCENDON_PANIC_MODE: boolean;
     env: string;
@@ -107,7 +123,9 @@ export namespace F1TV {
       manageAccount: string;
       subscription: string;
       verify: string;
+      cancelSubscription: string;
     };
+    enableCancelSubscriptionFooterCTA: boolean;
     drConfig: {
       endpoint: string;
       redirectUrl: string;
@@ -133,6 +151,9 @@ export namespace F1TV {
     browsers: {
       allow: Record<string, string>;
       crawlers: string[];
+      imageURLs: {
+        unsupportedBrowser: string;
+      };
     };
     imgCDNResize: string;
     imgCDNFlags: string;
@@ -161,9 +182,10 @@ export namespace F1TV {
       enabled: boolean;
       domain: string;
       vendorIds: {
-        bitmovinId: number;
-        newRelicId: number;
-        firebaseId: number;
+        bitmovinId: string;
+        newRelicId: string;
+        firebaseId: string;
+        abTastyId: string;
       };
       accountId: number;
       privacyManagerModalId: number;
@@ -222,23 +244,55 @@ export namespace F1TV {
       enabled: boolean;
     };
     locationDefaults: {
-      groupId: number;
+      groupId: string;
       entitlement: string;
       userCountry: string;
+    };
+    registeredCountryTargetedPopUp: {
+      enabled: boolean;
+      registeredCountries: string[];
+      stateChangeDate: string;
+      supportPage: string;
+    };
+    accessibilityStatement: {
+      enabled: boolean;
+    };
+    abTasty: {
+      accountID: string;
+    };
+    appLogLevel: string;
+    syndications: {
+      apple: ConfigSyndication;
+      fancode: ConfigSyndication;
     };
     version: string;
   };
 
-  export type ContentPlayAPIResult = APIResult<ContentPlayResult>;
+  export type ConfigSyndication = {
+    enabled: boolean;
+    syndicationJourneyURL: string;
+    territories: string[];
+  };
 
-  export type ContentPlayResult = {
+  export type ContentPlayAPIResult<P extends Player = Player> = APIResult<ContentPlayResult<P>>;
+
+  /** Result shape for each player: `player_bm` (Bitmovin) or `player_tm` (Tiled Media). */
+  export type ContentPlayResult<P extends Player = Player> = {
+    player_bm: ContentPlayBitmovinResult;
+    player_tm: ContentPlayTiledMediaResult;
+  }[P];
+
+  export type ContentPlayBaseResult = {
     entitlementToken: string;
-    url: string;
-    streamType: 'DASH' | 'DASHWV' | 'HLS';
+    streamType: StreamType;
+    /** Only set for DRM streams. */
     drmType?: 'widevine';
+    /** Widevine license URL (POST with the ascendontoken and entitlementtoken headers). */
     laURL?: string;
-    drmToken?: string;
     channelId: number;
+    pipelineVersion: number;
+    playApiVersion: string;
+    cdnType: string;
     settings: {
       upnext: {
         jitter: number;
@@ -246,7 +300,72 @@ export namespace F1TV {
     };
   };
 
-  export type ContentVideoAPIResult = APIResult<ContentVideoResult>;
+  export type ContentPlayBitmovinResult = ContentPlayBaseResult & {
+    url: string;
+  };
+
+  export type ContentPlayTiledMediaResult = ContentPlayBaseResult & {
+    tme: {
+      version: number;
+      /** `MULTI` when the response carries every feed of the content. */
+      channel?: string;
+      metadata: {
+        content_id: number;
+      };
+      advanced?: {
+        tile_size: {
+          width: number;
+          height: number;
+        };
+      };
+      feeds: {
+        url: string;
+        uuid?: string;
+        encoder_id?: string;
+        optionality?: string;
+        metadata: {
+          channel_id: number;
+          racing_number?: number;
+        };
+        audio_track_names?: Record<string, string>;
+        subtitle_track_names?: Record<string, string>;
+      }[];
+    };
+  };
+
+  /** Unlike other endpoints, this response has no `systemTime`. */
+  export type ContentUserSelectionsAPIResult = Omit<APIResult<ContentUserSelectionsResult>, 'systemTime'>;
+
+  /** Keyed by content ID. */
+  export type ContentUserSelectionsResult = Record<string, {
+    user: {
+      selections: {
+        myList: {
+          selected: boolean;
+        };
+      };
+      resume: {
+        contentId: number;
+        /** Seconds; 0 when there's nothing to resume. */
+        playHeadPosition: number;
+        /** Unix time in seconds, 0 when never played. */
+        timestamp: number;
+        deviceType: string;
+      };
+    };
+  }>;
+
+  export type ContentVideoAPIResult = APIResult<ContentVideoResult> & {
+    source: string;
+  };
+
+  export type ContentVideoAudioLanguage = {
+    audioLanguageName: string;
+    audioId: number;
+    isPreferred: boolean;
+  };
+
+  export type ContentVideoStreamIdentifier = 'PRES' | 'WIF' | 'TRACKER' | 'DATA' | 'OBC';
 
   export type ContentVideoContainer = {
     metadata: {
@@ -255,27 +374,25 @@ export namespace F1TV {
       year: string;
       emfAttributes: {
         sessionEndTime: string;
-        video: string;
-        multipartEventIndex: string;
+        multipartEventIndex?: string;
         session_index: string;
-        captions: string;
         MeetingSessionKey: string;
-        multipartEvent: string;
-        multipartEventNextHouseId: string;
+        multipartEvent?: string;
+        multipartEventNextHouseId?: string;
         sessionStartDate: string;
-        VideoType: string;
+        VideoType?: string;
         OBC: boolean;
-        multipartEventMainMSK: string;
+        multipartEventMainMSK?: string;
         MeetingCountryKey: string;
         Meeting_Country_Name: string;
-        multipartEventTotal: string;
-        Diplay_In_Schedule: string;
+        multipartEventTotal?: string;
+        Diplay_In_Schedule?: string;
         Global_Title: string;
-        state: string;
+        state?: string;
         Circuit_Short_Name: string;
         Meeting_Name: string;
         Meeting_Number: string;
-        multipartEventMainHouseId: string;
+        multipartEventMainHouseId?: string;
         Global_Meeting_Name: string;
         CircuitKey: string;
         Global_Meeting_Country_Name: string;
@@ -284,8 +401,17 @@ export namespace F1TV {
         Meeting_Location: string;
         bug: string;
         ContentCategory: string;
-        sessionEndDate: string;
+        sessionEndDate?: string;
         Meeting_Code: string;
+        Championship_Meeting_Ordinal?: string;
+        Circuit_Location?: string;
+        IsTestEvent?: string;
+        Meeting_Display_Date?: string;
+        Meeting_Official_Name?: string;
+        Meeting_Sponsor?: string;
+        Scheduled_Distance?: string;
+        Scheduled_Lap_Count?: string;
+        Track_Length?: string;
       };
       isADVAllowed: boolean;
       contentId: number;
@@ -298,13 +424,21 @@ export namespace F1TV {
       genres: string[];
       isOnAir: boolean;
       isEncrypted: boolean;
+      isCopyProtected: boolean;
+      copyProtections: {
+        securityCode: string;
+        securityOption: string;
+      }[];
       objectSubtype: string;
       metadataLanguage: string;
+      language: string;
       season: number;
+      pcLevel: number;
       pcLevelVod: string;
-      isParent: boolean
+      pcExtendedRatings: unknown[];
+      isParent: boolean;
       contractStartDate: number;
-      pictureUrl: string
+      pictureUrl: string;
       availableLanguages: {
         languageCode: string;
         languageName: string;
@@ -314,6 +448,7 @@ export namespace F1TV {
       advTags: string;
       shortDescription: string;
       leavingSoon: boolean;
+      recentlyAdded: boolean;
       availableAlso: string[];
       pcVodLabel: string;
       isGeoBlocked: boolean;
@@ -321,7 +456,6 @@ export namespace F1TV {
       titleBrief: string;
       comingSoon: boolean;
       isPopularEpisode: boolean;
-      primaryCategoryId: number;
       uiDuration: string;
       meetingKey: string;
       entitlement: string;
@@ -330,6 +464,12 @@ export namespace F1TV {
       parentalAdvisory: string;
       contentSubtype: string;
       contentType: string;
+      starRating: number;
+      actors: unknown[];
+      anchors: unknown[];
+      authors: unknown[];
+      directors: unknown[];
+      contentOptions: unknown[];
       additionalStreams?: {
         racingNumber: number;
         driverFirstName?: string;
@@ -345,16 +485,24 @@ export namespace F1TV {
         title: string;
         reportingName: string;
         default: boolean;
-        identifier: 'PRES' | 'WIF' | 'TRACKER' | 'DATA' | 'OBC';
+        identifier: ContentVideoStreamIdentifier;
+        /** `<channelId>.<language>`, for example `1033.eng`. */
+        audioDefault: string;
+        audioTrackNames?: Record<string, string>;
+        subtitleTrackNames?: Record<string, string>;
       }[];
     };
+    assets: {
+      assetId: number;
+      assetName: string;
+      assetType: string;
+      videoType: string;
+      audioLanguages: ContentVideoAudioLanguage[];
+    }[];
     platformVariants: {
-      audioLanguages: {
-        audioLanguageName: string;
-        audioId: string;
-        isPreferred: boolean;
-      }[];
-      cpId: string;
+      audioLanguages: ContentVideoAudioLanguage[];
+      subtitlesLanguages: unknown[];
+      cpId: number;
       videoType: string;
       pictureUrl: string;
       technicalPackages: {
@@ -362,7 +510,6 @@ export namespace F1TV {
         packageName: string;
         packageType: string;
       }[];
-      trailerUrl: string;
       hasTrailer: boolean;
     }[];
     popularity: {
@@ -372,33 +519,26 @@ export namespace F1TV {
     };
     contentId: number;
     containers: {
-      bundles: {
+      bundles?: {
         bundleSubtype: string;
         isParent: boolean;
         orderId: number;
         bundleId: number;
         bundleType: string;
       }[];
-      categories: {
-        categoryPathIds: number[];
-        externalPathIds: string[];
-        endDate: number;
-        orderId: number;
-        isPrimary: boolean;
-        categoryName: string;
-        categoryId: number;
-        startDate: number;
-      }[];
-    }[];
-    suggest: {
-      input: string[];
-      payload: {
-        objectSubtype: string;
-        contentId: string;
-        title: string;
-        objectType: string;
-      };
     };
+    parents?: {
+      parentId: number;
+      parentType: string;
+      parentSubType: string;
+    }[];
+    /** Delays between feeds, for syncing streams. */
+    playbackOffsets?: {
+      channelToAdjust: ContentVideoStreamIdentifier;
+      channels: ContentVideoStreamIdentifier[];
+      delaySeconds: number;
+    }[];
+    playbackOffsetsVersion?: string;
     platformName: string;
     properties: {
       sessionStartDate: number;
@@ -413,9 +553,13 @@ export namespace F1TV {
       meeting_End_Date: number;
       session_index: number;
       sessionEndDate: number;
+      meetingSessionKey: number;
     }[];
     id: number;
     layout: string;
+    uiMetadata: {
+      contentSubtype: string;
+    };
     liveNow: {
       enabled: {
         AMAZONFIRE: boolean;
@@ -434,9 +578,13 @@ export namespace F1TV {
 
   export type ContentVideoResult = {
     personalisation: {
-      url: string;
+      uri: string;
       httpMethod: string;
       body: string;
+    };
+    steering: {
+      uri: string;
+      httpMethod: string;
     };
     total: number;
     containers: ContentVideoContainer[];
@@ -612,6 +760,8 @@ export namespace F1TV {
     countries: any[];
   };
 
+  export type PictureVariant = 'landscape_web' | 'landscape_hero_web';
+
   export enum Platform {
     BIG_SCREEN_DASH = 'BIG_SCREEN_DASH',
     BIG_SCREEN_HLS = 'BIG_SCREEN_HLS',
@@ -622,6 +772,26 @@ export namespace F1TV {
     WEB_DASH = 'WEB_DASH',
     WEB_HLS = 'WEB_HLS',
   };
+
+  export type Player = 'player_bm' | 'player_tm';
+
+  export type StreamType =
+    | 'HLS'
+    | 'DASH'
+    | 'SDR_HD_CMAF'
+    | 'SDR_HD_DASHWV_SINGLE'
+    | 'SDR_HD_DASH_SINGLE'
+    | 'SDR_HD_CMAFWV'
+    | 'SDR_HD_DASHWV_SINGLE_AD'
+    | 'SDR_HD_DASH_SINGLE_AD'
+    | 'SDR_HD_CMAFWV_AD'
+    | 'SDR_HD_CMAF_AD'
+    | 'SDR_HD_CMAFFP'
+    | 'SDR_HD_CMAF_SINGLE'
+    | 'SDR_HD_CMAFFP_SINGLE'
+    | 'SDR_HD_CMAFFP_AD'
+    | 'SDR_HD_CMAFFP_SINGLE_AD'
+    | 'SDR_HD_CMAF_SINGLE_AD';
 
   export type SearchVodAPIResult = APIResult<SearchVodResult>;
 

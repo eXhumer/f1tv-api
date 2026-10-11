@@ -28,6 +28,9 @@ const f1tv = await F1TVClient.create({
   // dispatcher: an undici Dispatcher (default: the global dispatcher)
   // userAgent: custom User-Agent header
   // ascendon: log in as part of create(); rejects if the token is invalid
+  // deviceInfo: { os, browser, browserVersion, osVersion, model? } for the
+  //   x-f1-device-info header sent with contentPlay(), actionPlay() and
+  //   contentUserSelections()
 });
 
 // Verifies the ascendon (subscription) token, fetches the entitlement token
@@ -36,7 +39,17 @@ const user = await f1tv.login(ascendonToken);
 
 const liveNow = await f1tv.liveNow();
 const video = await f1tv.contentVideo(contentId);
-const play = await f1tv.contentPlay(contentId);
+// player: 'player_bm' (Bitmovin, a single stream url) or 'player_tm' (Tiled Media,
+// Premium; every feed in result.tme.feeds). The result type follows the player.
+const play = await f1tv.contentPlay(contentId, 'player_bm', channelId);
+
+// Saves the resume position (seconds) for VOD, like the web player's heartbeat.
+// contentSubType is the container's metadata.contentSubtype, for example 'REPLAY'.
+await f1tv.actionPlay(contentId, player.currentTime, 'REPLAY');
+
+// Reads the saved resume position (and My List state), keyed by content ID.
+const selections = await f1tv.contentUserSelections([{ contentId, duration: video.metadata.duration }]);
+const resumeAt = selections.resultObj[contentId].user.resume.playHeadPosition;
 
 // Clears the tokens and refreshes location as an anonymous user.
 await f1tv.logout();
@@ -50,6 +63,9 @@ Requires Node.js 22.19 or later. The package ships both ESM and CommonJS builds.
 - The `ascendon` setter is replaced by `await login(token)` and `await logout()`. Both refresh location, so after login the client uses your subscription's entitlement instead of staying anonymous.
 - If `login()` or `logout()` is called while an earlier `login()` is still running, the earlier call rejects without changing state.
 - `isReady` was removed, because a client returned by `create()` is always ready.
+- `contentPlay(contentId, channelId?, platform?)` is now `contentPlay(contentId, player, channelId?, platform?)`, where `player` is `'player_bm'` or `'player_tm'`. It calls the play API version from F1TV's config (currently 3.0), and the result is typed for the player you pass. `drmToken` is gone; use `laURL` for the Widevine license.
+- `contentVideo()` also takes its API version from the config (currently 4.0).
+- `picture()` sends `w`/`h` like the web app, and takes an optional `variant` (`landscape_web` or `landscape_hero_web`) as its last argument.
 - Token verification uses `jose`, so verification errors are jose's error classes (for example `JWTExpired`) instead of jsonwebtoken's.
 
 ## Credits
