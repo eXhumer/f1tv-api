@@ -1,6 +1,6 @@
 {
   "name": "@exhumer/f1tv-api",
-  "version": "3.1.0",
+  "version": "3.2.0",
   "description": "Unofficial F1TV API client for JavaScript/TypeScript",
   "type": "module",
   "license": "AGPL-3.0-only",
