@@ -2,6 +2,17 @@
   "name": "@exhumer/f1tv-api",
   "version": "3.2.0",
   "description": "Unofficial F1TV API client for JavaScript/TypeScript",
+  "keywords": [
+    "f1tv",
+    "f1-tv",
+    "formula1",
+    "formula-1",
+    "f1",
+    "motorsport",
+    "api",
+    "api-client",
+    "typescript"
+  ],
   "type": "module",
   "license": "AGPL-3.0-only",
   "author": {
@@ -56,6 +67,6 @@
   },
   "dependencies": {
     "jose": "^6.2.12",
-    "undici": "^8.11.2"
+    "undici": "^8.12.2"
   }
 }
