@@ -58,12 +58,21 @@
   },
   "scripts": {
     "build": "tsdown",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "typecheck:test": "tsc -p tsconfig.test.json --noEmit",
+    "test": "vitest run --reporter=verbose",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage --reporter=junit --outputFile=test-report.junit.xml"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
+    "@vitest/coverage-istanbul": "^5.0.5",
     "tsdown": "^0.23.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5"
+  },
+  "allowScripts": {
+    "fsevents@2.3.3": true
   },
   "dependencies": {
     "jose": "^6.2.12",

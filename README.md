@@ -1,5 +1,7 @@
 # f1tv-api
 
+[![CI](https://github.com/eXhumer/f1tv-api/actions/workflows/ci.yml/badge.svg)](https://github.com/eXhumer/f1tv-api/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/eXhumer/f1tv-api/branch/main/graph/badge.svg)](https://codecov.io/gh/eXhumer/f1tv-api)
 [![Publish Package to NPM registry](https://github.com/eXhumer/f1tv-api/actions/workflows/publish.yml/badge.svg)](https://github.com/eXhumer/f1tv-api/actions/workflows/publish.yml)
 
 Unofficial F1TV API client for JavaScript/TypeScript.
@@ -67,6 +69,21 @@ Requires Node.js 22.19 or later. The package ships both ESM and CommonJS builds.
 - `contentVideo()` also takes its API version from the config (currently 4.0).
 - `picture()` sends `w`/`h` like the web app, and takes an optional `variant` (`landscape_web` or `landscape_hero_web`) as its last argument.
 - Token verification uses `jose`, so verification errors are jose's error classes (for example `JWTExpired`) instead of jsonwebtoken's.
+
+## Development
+
+```sh
+npm install
+npm run typecheck
+npm run build
+npm test
+npm run coverage
+```
+
+The tests answer the client's requests with an undici `MockAgent` (the client's
+`dispatcher` option), and sign test tokens with a key whose JWKS stands in for
+F1's, so they never reach F1. Coverage must stay at 100%; `npm run coverage`
+fails below it.
 
 ## Credits
 * [robvdpol](https://github.com/robvdpol) and contributors of [RaceControl](https://github.com/robvdpol/RaceControl/). The addition of searchVod method was possbile thanks to their contribution to the project.

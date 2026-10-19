@@ -10,3 +10,7 @@ npm-debug.log
 
 # OS generated files
 .DS_Store
+
+# Coverage reports
+coverage/
+test-report.junit.xml
