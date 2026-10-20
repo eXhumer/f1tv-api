@@ -90,4 +90,4 @@ fails below it.
 
 ## License
 
-This package is licensed under the AGPL-3.0-only License. See the [LICENSE](LICENSE.md) file for more information.
+[MIT](LICENSE.md)

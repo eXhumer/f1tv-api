@@ -14,7 +14,7 @@
     "typescript"
   ],
   "type": "module",
-  "license": "AGPL-3.0-only",
+  "license": "MIT",
   "author": {
     "name": "eXhumer",
     "email": "github@exhumer.cc"
