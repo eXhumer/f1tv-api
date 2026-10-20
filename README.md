@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/eXhumer/f1tv-api/actions/workflows/ci.yml/badge.svg)](https://github.com/eXhumer/f1tv-api/actions/workflows/ci.yml)
 [![Coverage](https://codecov.io/gh/eXhumer/f1tv-api/branch/main/graph/badge.svg)](https://codecov.io/gh/eXhumer/f1tv-api)
-[![Publish Package to NPM registry](https://github.com/eXhumer/f1tv-api/actions/workflows/publish.yml/badge.svg)](https://github.com/eXhumer/f1tv-api/actions/workflows/publish.yml)
+[![npm](https://img.shields.io/npm/v/@exhumer/f1tv-api)](https://www.npmjs.com/package/@exhumer/f1tv-api)
 
 Unofficial F1TV API client for JavaScript/TypeScript.
 

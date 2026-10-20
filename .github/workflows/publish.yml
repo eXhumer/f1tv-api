@@ -44,7 +44,7 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Test
+      - name: Run tests
         run: npm test
 
       - name: Publish with provenance
